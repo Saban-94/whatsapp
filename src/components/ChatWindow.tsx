@@ -147,7 +147,7 @@ export default function ChatWindow({
         </div>
         <div className="absolute bottom-10 text-[12px] text-[#8696a0] flex items-center gap-1">
           <Lock className="w-3.5 h-3.5" />
-          <span>מאובטח ומוצפן. פותח עבור הראל</span>
+          <span>מאובטח ומוצפן. פותח עבור ראמי</span>
         </div>
       </div>
     );

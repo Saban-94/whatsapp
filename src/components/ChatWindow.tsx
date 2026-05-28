@@ -24,8 +24,10 @@ import {
   Play,
   Pause,
   Download,
-  Loader2
+  Loader2,
+  Copy
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Chat, Message, UserProfile } from '../types';
 import DoodleBackground from './DoodleBackground';
 import { storage } from '../lib/firebase';
@@ -63,6 +65,26 @@ export default function ChatWindow({
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [voicePlayingId, setVoicePlayingId] = useState<string | null>(null);
+
+  // New states for Responsive layout, Media tabs and copy status
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [activeMediaTab, setActiveMediaTab] = useState<'images' | 'docs'>('images');
+  const [copyStatus, setCopyStatus] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const handleCopyPhone = (phoneNum: string) => {
+    if (!phoneNum) return;
+    navigator.clipboard.writeText(phoneNum);
+    setCopyStatus(true);
+    setTimeout(() => setCopyStatus(false), 2000);
+  };
 
   // Auto reset delete confirmation when header menu is toggled off
   useEffect(() => {
@@ -274,6 +296,13 @@ export default function ChatWindow({
 
   const filteredMessages = chat.messages.filter(msg => 
     msg.text.toLowerCase().includes(chatSearchQuery.toLowerCase())
+  );
+
+  const mediaImages = chat.messages.filter(msg => msg.mediaType === 'image' && msg.mediaUrl);
+  const mediaDocs = chat.messages.filter(msg => 
+    (msg.mediaType === 'doc' && msg.mediaUrl) || 
+    msg.text?.toLowerCase().endsWith('.pdf') || 
+    (msg.mediaUrl && msg.mediaType !== 'image' && msg.mediaType !== 'voice' && !msg.text?.includes('הודעה קולית'))
   );
 
   const emojis = ['😃', '😂', '👍', '❤️', '🙏', '🔥', '🎉', '💡', '🏗️', '📦', '🚚', '📋', '✅', '⏳', '🛑', '⚠️', '👷'];
@@ -561,6 +590,253 @@ export default function ChatWindow({
           </div>
         </div>
       </div>
+
+      {/* DETAILS PANEL (פרטי איש קשר) */}
+      <AnimatePresence>
+        {showDetailsPanel && (
+          <motion.div
+            initial={{ width: 0, opacity: 0 }}
+            animate={{ width: isMobile ? '100%' : '380px', opacity: 1 }}
+            exit={{ width: 0, opacity: 0 }}
+            transition={{ type: 'tween', duration: 0.22 }}
+            className={`h-full bg-white border-r md:border-r-0 md:border-l border-[#e9edef] flex flex-col z-20 overflow-hidden shrink-0 text-right ${
+              isMobile ? 'absolute inset-0' : 'relative'
+            }`}
+          >
+            {/* Header */}
+            <div className="h-[60px] bg-white px-4 border-b border-[#e9edef] flex items-center justify-between select-none shrink-0">
+              <span className="font-semibold text-[16px] text-[#111b21]">פרטי איש קשר</span>
+              <button 
+                onClick={() => setShowDetailsPanel(false)} 
+                className="text-[#667781] hover:bg-gray-105 p-1 rounded-full cursor-pointer bg-transparent border-0 transition-colors"
+              >
+                <X className="w-5.5 h-5.5" />
+              </button>
+            </div>
+
+            {/* Scrollable Content */}
+            <div className="flex-1 overflow-y-auto pb-6">
+              
+              {/* Profile Card */}
+              <div className="flex flex-col items-center justify-center py-6 px-4 bg-white shadow-xs border-b border-gray-100">
+                <img 
+                  src={chat.avatar} 
+                  alt={chat.name} 
+                  className="w-[110px] h-[110px] rounded-full object-cover shadow-sm border border-gray-150 mb-3"
+                  referrerPolicy="no-referrer"
+                />
+                <h3 className="font-semibold text-base text-[#111b21] leading-tight text-center">{chat.name}</h3>
+                <span className="text-xs text-gray-500 font-mono mt-1 text-center select-all">{chat.phoneNumber || 'אין מספר טלפון'}</span>
+                
+                {chat.isOnline ? (
+                  <span className="text-xs text-[#00a884] font-semibold mt-2 flex items-center gap-1">
+                    <span className="h-2 w-2 rounded-full bg-[#1fa96c] inline-block animate-pulse" />
+                    מחובר/ת כעת
+                  </span>
+                ) : (
+                  <span className="text-xs text-gray-400 mt-2">לא מחובר</span>
+                )}
+              </div>
+
+              {/* Bio & About Section */}
+              <div className="bg-white px-6 py-4 border-b border-gray-100">
+                <span className="text-[12px] text-[#008069] font-semibold block mb-2 select-none">אודות</span>
+                <p className="text-sm text-gray-700 leading-relaxed font-normal">
+                  {chat.description || "מערכת תפעול משרד ח. סבן - מזכירה אישית JONI AI - שירות לקוחות."}
+                </p>
+                <div className="flex items-center justify-between mt-3 bg-gray-50 rounded-lg p-2.5 border border-gray-150">
+                  <span className="text-xs text-gray-600 truncate font-mono select-all">{chat.phoneNumber || 'ללא מספר קשר'}</span>
+                  <button 
+                    onClick={() => handleCopyPhone(chat.phoneNumber || '')}
+                    className="p-1.5 text-[#008069] bg-white border border-gray-205 hover:bg-gray-50 rounded shadow-xs flex items-center justify-center cursor-pointer text-[11px] gap-1 font-semibold"
+                    title="העתק מספר טלפון"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                    <span>{copyStatus ? 'הועתק!' : 'העתק'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* MEDIA & FILES ACCORDION PANEL (המדיה והקבצים) */}
+              <div className="bg-white px-6 py-4 border-b border-gray-100 flex flex-col">
+                <div className="flex items-center justify-between mb-3 select-none">
+                  <span className="text-[14px] text-[#111b21] font-semibold">מדיה וקבצים JONI</span>
+                  <span className="text-[11px] font-bold text-[#008069] px-2 py-0.5 bg-[#e2efeb] rounded-full">
+                    {mediaImages.length + mediaDocs.length} פריטים
+                  </span>
+                </div>
+
+                {/* Sub Tab selection */}
+                <div className="flex bg-gray-100 rounded-lg p-0.5 mb-3.5 select-none text-[11px] font-medium">
+                  <button
+                    onClick={() => setActiveMediaTab('images')}
+                    className={`flex-1 text-center py-1.5 rounded-md transition-all cursor-pointer border-0 ${
+                      activeMediaTab === 'images' ? 'bg-[#008069] text-white shadow-xs font-semibold' : 'text-gray-600 bg-transparent hover:text-gray-900'
+                    }`}
+                  >
+                    תמונות וסרטונים ({mediaImages.length})
+                  </button>
+                  <button
+                    onClick={() => setActiveMediaTab('docs')}
+                    className={`flex-1 text-center py-1.5 rounded-md transition-all cursor-pointer border-0 ${
+                      activeMediaTab === 'docs' ? 'bg-[#008069] text-white shadow-xs font-semibold' : 'text-gray-600 bg-transparent hover:text-gray-900'
+                    }`}
+                  >
+                    מסמכים ({mediaDocs.length})
+                  </button>
+                </div>
+
+                {/* Media contents list/grid */}
+                {activeMediaTab === 'images' ? (
+                  mediaImages.length === 0 ? (
+                    <div className="py-8 text-center text-xs text-gray-400 select-none flex flex-col items-center justify-center gap-1.5 bg-gray-50 rounded-xl border border-dashed border-gray-200/80">
+                      <Image className="w-7 h-7 text-gray-300 stroke-1" />
+                      <span>אין תמונות או סרטונים בשיחה זו</span>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-3 gap-2 max-h-[280px] overflow-y-auto pr-1">
+                      {mediaImages.map((msg) => (
+                        <div 
+                          key={msg.id}
+                          className="relative aspect-square rounded-lg overflow-hidden border border-gray-150 bg-gray-100 group/item cursor-pointer"
+                          onClick={() => handleDownloadFile(msg.mediaUrl, msg.text)}
+                          title="לחץ להורדה מיידית"
+                        >
+                          <img 
+                            src={msg.mediaUrl} 
+                            alt={msg.text} 
+                            className="w-full h-full object-cover group-hover/item:scale-105 transition-transform duration-250" 
+                          />
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/item:opacity-100 flex items-center justify-center transition-all">
+                            <Download className="w-5 h-5 text-white" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                ) : (
+                  mediaDocs.length === 0 ? (
+                    <div className="py-8 text-center text-xs text-gray-400 select-none flex flex-col items-center justify-center gap-1.5 bg-gray-50 rounded-xl border border-dashed border-gray-200/80">
+                      <File className="w-7 h-7 text-gray-300 stroke-1" />
+                      <span>אין מסמכים בשיחה זו</span>
+                    </div>
+                  ) : (
+                    <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+                      {mediaDocs.map((msg) => (
+                        <div 
+                          key={msg.id}
+                          onClick={() => handleDownloadFile(msg.mediaUrl, msg.text)}
+                          className="flex items-center gap-3 p-2 bg-gray-50/50 hover:bg-gray-100 border border-gray-150 rounded-lg transition-colors cursor-pointer text-right group/d"
+                          title="לחץ להורדה"
+                        >
+                          <div className="w-8 h-8 rounded bg-[#efeff4] text-[#007AFF] flex items-center justify-center font-bold text-xs shrink-0 select-none border border-gray-200">
+                            <File className="w-4 h-4 text-[#007AFF]" />
+                          </div>
+                          <div className="flex-1 min-w-0 pr-0.5">
+                            <p className="text-xs font-semibold text-gray-800 truncate leading-tight" title={msg.text}>{msg.text}</p>
+                            <span className="text-[9px] text-gray-400 font-mono block mt-1">{msg.timestamp}</span>
+                          </div>
+                          <button 
+                            className="p-1 px-1.5 bg-white border border-gray-200 group-hover/d:border-[#007AFF] text-gray-500 group-hover/d:text-[#007AFF] rounded shrink-0 transition-colors flex items-center justify-center shadow-2xs"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                )}
+              </div>
+
+              {/* Encryption Notice */}
+              <div className="p-5 select-none text-center bg-gray-50/40 text-[11px] text-[#667781] leading-relaxed flex flex-col items-center justify-center gap-2">
+                <Lock className="w-4 h-4 text-[#008069]" />
+                <span>ההודעות והשיחות מוצפנות מקצה לקצה בצורה מלאה דרך JONI Smart Office.</span>
+              </div>
+
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* SEARCH PANEL (חיפוש בשיחה) */}
+      <AnimatePresence>
+        {showSearchInChat && (
+          <motion.div
+            initial={{ width: 0, opacity: 0 }}
+            animate={{ width: isMobile ? '100%' : '380px', opacity: 1 }}
+            exit={{ width: 0, opacity: 0 }}
+            transition={{ type: 'tween', duration: 0.22 }}
+            className={`h-full bg-white border-r md:border-r-0 md:border-l border-[#e9edef] flex flex-col z-20 overflow-hidden shrink-0 text-right ${
+              isMobile ? 'absolute inset-0' : 'relative'
+            }`}
+          >
+            {/* Header */}
+            <div className="h-[60px] bg-white px-4 border-b border-[#e9edef] flex items-center justify-between select-none shrink-0">
+              <span className="font-semibold text-[16px] text-[#111b21]">חיפוש הודעות</span>
+              <button 
+                onClick={() => setShowSearchInChat(false)} 
+                className="text-[#667781] hover:bg-gray-105 p-1 rounded-full cursor-pointer bg-transparent border-0 transition-colors"
+              >
+                <X className="w-5.5 h-5.5" />
+              </button>
+            </div>
+
+            {/* Input Search Block */}
+            <div className="p-3 bg-white border-b border-[#e9edef]">
+              <div className="bg-[#f0f2f5] rounded-xl flex items-center px-3.5 py-1.5 gap-2 border border-transparent focus-within:bg-white focus-within:ring-2 focus-within:ring-[#007AFF]/25 transition-all">
+                <Search className="w-4.5 h-4.5 text-[#667781]" />
+                <input
+                  type="text"
+                  placeholder="חפש הודעות..."
+                  value={chatSearchQuery}
+                  onChange={(e) => setChatSearchQuery(e.target.value)}
+                  className="flex-1 bg-transparent border-none text-sm text-right outline-hidden"
+                  autoFocus
+                />
+                {chatSearchQuery && (
+                  <button onClick={() => setChatSearchQuery('')} className="bg-transparent border-0 p-0 text-gray-400 hover:text-gray-650">
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Results Panel */}
+            <div className="flex-1 overflow-y-auto bg-white p-4">
+              {chatSearchQuery.trim() === '' ? (
+                <div className="text-center text-xs text-gray-400 py-16 px-4 select-none flex flex-col items-center justify-center gap-1">
+                  <span>הקלד מילה או ביטוי כדי לחפש בהודעות השיחה</span>
+                </div>
+              ) : filteredMessages.length === 0 ? (
+                <div className="text-center text-xs text-gray-400 py-16 px-4 select-none">
+                  לא נמצאו הודעות תואמות בשיחה זו
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="text-[11px] text-[#008069] font-semibold mb-2 uppercase select-none">
+                    נמצאו {filteredMessages.length} הודעות תואמות
+                  </div>
+                  {filteredMessages.map((msg) => (
+                    <div 
+                      key={msg.id}
+                      className="p-3 rounded-lg bg-[#f0f2f5]/60 hover:bg-[#f0f2f5] transition-all border border-gray-150/50 text-right cursor-pointer"
+                    >
+                      <div className="flex justify-between items-center mb-1">
+                        <span className={`text-[10px] font-bold ${msg.isOutgoing ? 'text-blue-600' : 'text-[#008069]'}`}>
+                          {msg.isOutgoing ? 'נשלח ממך' : chat.name}
+                        </span>
+                        <span className="text-[9px] text-gray-400 font-mono">{msg.timestamp}</span>
+                      </div>
+                      <p className="text-xs text-gray-700 leading-normal line-clamp-3 select-text">{msg.text}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* MODAL FORWARD MESSAGE */}
       {messageToForward && (

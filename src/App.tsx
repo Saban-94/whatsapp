@@ -9,6 +9,7 @@ import TasksDrawer from './components/TasksDrawer';
 import { motion, AnimatePresence } from 'motion/react';
 import AdminPanel from './components/AdminPanel';
 import { sendJoniMessage } from './lib/firebase';
+import { saveUserLocally } from './lib/storageUtils';
 
 export default function App() {
   const [chats, setChats] = useState<Chat[]>(() => {
@@ -101,11 +102,21 @@ export default function App() {
 
   const playIncomingSound = () => {
     try {
-      const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-84.wav');
+      const audio = new Audio();
+      audio.onerror = () => {
+        console.warn('Audio sound failed to load or asset is unavailable. Continuing silently.');
+      };
+      audio.src = 'https://assets.mixkit.co/active_storage/sfx/2869/2869-84.wav';
       audio.volume = 0.45;
-      audio.play();
+      
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(err => {
+          console.warn('Audio playback was prevented by autoplay engine or load issues:', err);
+        });
+      }
     } catch (err) {
-      console.error('Failed playing audio notification:', err);
+      console.warn('Synchronous error playing notification audio:', err);
     }
   };
 
@@ -115,7 +126,7 @@ export default function App() {
   }, [chats]);
 
   useEffect(() => {
-    localStorage.setItem('whatsapp_clone_user', JSON.stringify(currentUser));
+    saveUserLocally(currentUser);
   }, [currentUser]);
 
   useEffect(() => {

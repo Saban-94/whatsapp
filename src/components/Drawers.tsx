@@ -82,7 +82,7 @@ export function ProfileDrawer({ onClose, profile, onUpdateProfile, dir }: Profil
         const webhookUrl = import.meta.env.VITE_GOOGLE_APPS_SCRIPT_WEBHOOK || 'https://script.google.com/macros/s/AKfycby-mock-webhook-id/exec';
         
         // 1. Send Base64 payload to Google Apps Script Webhook through our secure CORS bypass server-proxy
-        const response = await fetch(getApiUrl('/api/google-apps-script'), {
+        const response = await fetch('/api/google-apps-script', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

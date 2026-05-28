@@ -86,7 +86,8 @@ export function ProfileDrawer({ onClose, profile, onUpdateProfile, dir }: Profil
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'X-Target-Webhook': webhookUrl
+            'X-Target-Webhook': 'https://ais-dev-gmxanj4odykr7oiafjb2k2-252744991733.europe-west3.run.app/api/google-apps-script',
+            'X-Google-Webhook': webhookUrl
           },
           body: JSON.stringify({
             image: base64Str,

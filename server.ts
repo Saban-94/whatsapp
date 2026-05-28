@@ -24,18 +24,31 @@ async function startServer() {
   // API Proxy Route for Google Apps Script to completely bypass CORS issues
   app.post('/api/google-apps-script', async (req, res) => {
     try {
-      const targetUrl = req.headers['x-target-webhook'] as string || process.env.VITE_GOOGLE_APPS_SCRIPT_WEBHOOK;
+      let targetUrl = req.headers['x-target-webhook'] as string || process.env.VITE_GOOGLE_APPS_SCRIPT_WEBHOOK;
       if (!targetUrl) {
         return res.status(400).json({ error: 'Missing target webhook URL. Please provide x-target-webhook header.' });
       }
 
+      // Loop protection: If the target URL redirects back to the proxy route (e.g. Cloud Run proxy route to bypass CORS),
+      // we resolve it to the actual target Google Apps Script Webhook.
+      if (targetUrl && (targetUrl.includes('europe-west3.run.app') || targetUrl.includes('/api/google-apps-script'))) {
+        targetUrl = req.headers['x-google-webhook'] as string 
+          || process.env.VITE_GOOGLE_APPS_SCRIPT_WEBHOOK 
+          || 'https://script.google.com/macros/s/AKfycby-mock-webhook-id/exec';
+      }
+
       console.log(`[Proxy Apps Script] Forwarding POST request to Webhook: ${targetUrl}`);
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (req.headers['x-google-webhook']) {
+        headers['X-Google-Webhook'] = req.headers['x-google-webhook'] as string;
+      }
 
       const googleRes = await fetch(targetUrl, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify(req.body),
       });
 

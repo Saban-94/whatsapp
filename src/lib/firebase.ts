@@ -14,7 +14,7 @@ const firebaseConfig = {
 };
 
 // מניעת שגיאות אתחול כפול בטעינה חמה
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+export const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
 // חיבור למאגרים הספציפיים
 export const db = getFirestore(app, "ai-studio-cc5d2687-b402-4b97-b808-5ba700689e0e");

@@ -448,7 +448,7 @@ export default function App() {
               onSendMessage={handleSendMessage}
               currentUser={currentUser}
               wallpaperTheme={wallpaperTheme}
-              onDeleteChat={handleDeleteChatHistory}
+              onDeleteChat={handleDeleteChatCompletely}
               chats={chats}
               onOpenAdmin={() => setIsAdminOpen(true)}
             />

@@ -14,7 +14,8 @@ import {
   BookOpen,
   VolumeX,
   PlusSquare,
-  Lock
+  Lock,
+  ListTodo
 } from 'lucide-react';
 import { Chat, UserProfile, StatusStory } from '../types';
 
@@ -28,6 +29,7 @@ interface SidebarProps {
   onOpenProfile: () => void;
   onOpenNewChat: () => void;
   onOpenSettings: () => void;
+  onOpenTasks: () => void;
   onMarkAllAsRead: () => void;
   searchTerm: string;
   onSearchChange: (val: string) => void;
@@ -44,6 +46,7 @@ export default function Sidebar({
   onOpenProfile,
   onOpenNewChat,
   onOpenSettings,
+  onOpenTasks,
   onMarkAllAsRead,
   searchTerm,
   onSearchChange,
@@ -161,6 +164,15 @@ export default function Sidebar({
 
         {/* Action Controls */}
         <div className="flex items-center gap-5 text-[#54656f]">
+          {/* Tasks Trigger */}
+          <button 
+            onClick={onOpenTasks}
+            className="hover:bg-[#d9dbd9]/60 p-2 rounded-full cursor-pointer transition-colors bg-transparent border-0 text-[#4285F4] hover:text-[#357ae8]"
+            title="משימות Google Tasks"
+          >
+            <ListTodo className="w-5.5 h-5.5" />
+          </button>
+
           {/* Status Trigger */}
           <button 
             onClick={onOpenStatus}
@@ -218,6 +230,13 @@ export default function Sidebar({
                   >
                     <Settings className="w-4 h-4 text-gray-400" />
                     <span>הגדרות וקבוצות</span>
+                  </button>
+                  <button 
+                    onClick={() => { onOpenTasks(); setShowDropdown(false); }}
+                    className="w-full text-right px-4 py-2.5 hover:bg-gray-50 flex items-center gap-3 text-gray-700 font-normal bg-transparent border-0 cursor-pointer"
+                  >
+                    <ListTodo className="w-4 h-4 text-[#4285F4]" />
+                    <span>משימות JONI Tasks</span>
                   </button>
                   <button 
                     onClick={() => { onMarkAllAsRead(); setShowDropdown(false); }}

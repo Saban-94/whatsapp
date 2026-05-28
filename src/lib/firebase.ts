@@ -35,12 +35,13 @@ export interface FirestoreErrorInfo {
 export const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
 // חיבור למאגרים הספציפיים (CRITICAL: DB initialization uses databaseId from config if provided)
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId || "(default)");
+export const db = getFirestore(app, (firebaseConfig as any).firestoreDatabaseId || "(default)");
 export const rtdb = getDatabase(app);
 export const auth = getAuth(app);
 export const storage = getStorage(app);
 export const googleProvider = new GoogleAuthProvider();
 googleProvider.addScope("https://www.googleapis.com/auth/contacts");
+googleProvider.addScope("https://www.googleapis.com/auth/tasks");
 
 export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
   const errInfo: FirestoreErrorInfo = {

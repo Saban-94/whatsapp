@@ -18,9 +18,9 @@ export default function StatusViewer({ stories, onClose, onMarkAsViewed, dir }: 
   const currentStory = stories[currentIndex];
 
   useEffect(() => {
-    if (!currentStory) return;
+    if (!currentStory || currentStory.viewed) return;
     onMarkAsViewed(currentStory.id);
-  }, [currentIndex, currentStory, onMarkAsViewed]);
+  }, [currentIndex, currentStory?.id, currentStory?.viewed, onMarkAsViewed]);
 
   useEffect(() => {
     if (isPaused) return;

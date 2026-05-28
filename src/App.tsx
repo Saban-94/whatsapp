@@ -69,11 +69,13 @@ export default function App() {
   // Handle active chat changes to clear unread metrics
   useEffect(() => {
     if (activeChatId) {
-      setChats(prevChats => 
-        prevChats.map(c => 
+      setChats(prevChats => {
+        const hasUnread = prevChats.some(c => c.id === activeChatId && c.unreadCount > 0);
+        if (!hasUnread) return prevChats;
+        return prevChats.map(c => 
           c.id === activeChatId ? { ...c, unreadCount: 0 } : c
-        )
-      );
+        );
+      });
     }
   }, [activeChatId]);
 
@@ -321,7 +323,13 @@ export default function App() {
   };
 
   const handleMarkStatusAsViewed = (id: string) => {
-    setStatuses(prev => prev.map(st => st.id === id ? { ...st, viewed: true } : st));
+    setStatuses(prev => prev.map(st => {
+      if (st.id === id) {
+        if (st.viewed) return st;
+        return { ...st, viewed: true };
+      }
+      return st;
+    }));
   };
 
   const handleDeleteChatHistory = (chatId: string) => {

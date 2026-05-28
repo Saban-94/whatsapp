@@ -1,0 +1,6 @@
+{
+  "name": "WhatsApp Web",
+  "description": "שיבוט מושלם ומדויק של ממשק הוואטסאפ ווב (WhatsApp Web) בעברית מלאה ותמיכה מלאה ב-RTL. כולל תאימות צבעים, פריסה ופיצ'רים אינטראקטיביים.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

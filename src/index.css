@@ -1,0 +1,31 @@
+@import url('https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Rubik", "Segoe UI", "Heebo", system-ui, sans-serif;
+  --font-mono: "Fira Code", "SFMono-Regular", ui-monospace, monospace;
+}
+
+/* Custom gorgeous thin scrollbar to match real WhatsApp Web */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(11, 20, 26, 0.2);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(11, 20, 26, 0.35);
+}
+
+/* Smooth motion for drawers */
+.mirror {
+  transform: scaleX(-1);
+}

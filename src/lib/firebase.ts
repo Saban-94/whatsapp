@@ -3,26 +3,65 @@ import { getFirestore, collection, addDoc } from "firebase/firestore";
 import { getAuth, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { getStorage } from "firebase/storage";
 import { getDatabase, ref, push, set } from "firebase/database";
+import firebaseConfig from "../../firebase-applet-config.json";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyAQzXHpiSVBqbU1zXVXtl4tDtEPnqkdeUI",
-  authDomain: "saban-ai-drive.firebaseapp.com",
-  projectId: "saban-ai-drive",
-  storageBucket: "saban-ai-drive.firebasestorage.app",
-  messagingSenderId: "516446483197",
-  appId: "1:516446483197:web:21fc622f56c4e2a3050494"
-};
+export enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+export interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId?: string | null;
+    email?: string | null;
+    emailVerified?: boolean | null;
+    isAnonymous?: boolean | null;
+    tenantId?: string | null;
+    providerInfo?: {
+      providerId?: string | null;
+      email?: string | null;
+    }[];
+  }
+}
 
 // מניעת שגיאות אתחול כפול בטעינה חמה
 export const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
-// חיבור למאגרים הספציפיים
-export const db = getFirestore(app, "ai-studio-cc5d2687-b402-4b97-b808-5ba700689e0e");
+// חיבור למאגרים הספציפיים (CRITICAL: DB initialization uses databaseId from config if provided)
+export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId || "(default)");
 export const rtdb = getDatabase(app);
 export const auth = getAuth(app);
 export const storage = getStorage(app);
 export const googleProvider = new GoogleAuthProvider();
 googleProvider.addScope("https://www.googleapis.com/auth/contacts");
+
+export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth.currentUser?.uid,
+      email: auth.currentUser?.email,
+      emailVerified: auth.currentUser?.emailVerified,
+      isAnonymous: auth.currentUser?.isAnonymous,
+      tenantId: auth.currentUser?.tenantId,
+      providerInfo: auth.currentUser?.providerData?.map(provider => ({
+        providerId: provider.providerId,
+        email: provider.email,
+      })) || []
+    },
+    operationType,
+    path
+  };
+  console.error('Firestore Error details:', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
 
 export const loginAndGetAccessToken = async () => {
   const result = await signInWithPopup(auth, googleProvider);
@@ -68,15 +107,18 @@ export const sendJoniMessage = async (phoneNumber: string, text: string, mediaTy
   }
 
   // 2. כתיבה ל-Firestore (תמיכה בתוסף JONI Firestore)
+  const pathForWrite = "joni_outbox";
   try {
-    const colRef = collection(db, "joni_outbox");
+    const colRef = collection(db, pathForWrite);
     const docRef = await addDoc(colRef, payload);
     results.firestore = true;
     console.log("JONI Firestore message queued:", docRef.id);
   } catch (error: any) {
     console.error("JONI Firestore Add Failed:", error);
     results.error = error;
+    handleFirestoreError(error, OperationType.WRITE, pathForWrite);
   }
 
   return results;
 };
+

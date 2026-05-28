@@ -1,0 +1,80 @@
+{
+  "entities": {
+    "JoniUser": {
+      "title": "JoniUser",
+      "description": "User profile settings synchronized with Firebase and Google Drive.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Display name of the user"
+        },
+        "avatar": {
+          "type": "string",
+          "description": "Base64 or secure web link to the user image"
+        },
+        "status": {
+          "type": "string",
+          "description": "Short bio or tagline"
+        },
+        "phoneNumber": {
+          "type": "string",
+          "description": "Standard contact number format"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of the last update"
+        }
+      },
+      "required": ["name"]
+    },
+    "JoniOutbox": {
+      "title": "JoniOutbox",
+      "description": "Outbox messages queued to be processed by WhatsApp JONI extension.",
+      "type": "object",
+      "properties": {
+        "phoneNumber": {
+          "type": "string",
+          "description": "Sanitized destination phone number"
+        },
+        "text": {
+          "type": "string",
+          "description": "Text content of the message"
+        },
+        "mediaType": {
+          "type": "string",
+          "description": "Type of media to send"
+        },
+        "mediaUrl": {
+          "type": "string",
+          "description": "Optional URL to media attachment if any"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Message creation date-status"
+        },
+        "source": {
+          "type": "string",
+          "description": "Identifier of the outgoing PWA"
+        },
+        "status": {
+          "type": "string",
+          "description": "State of message sending, typically 'pending_joni'"
+        }
+      },
+      "required": ["phoneNumber", "text", "mediaType", "timestamp", "source", "status"]
+    }
+  },
+  "firestore": {
+    "/joni_users/{userId}": {
+      "schema": "JoniUser",
+      "description": "User settings database records"
+    },
+    "/joni_outbox/{msgId}": {
+      "schema": "JoniOutbox",
+      "description": "Outbox pipeline messages"
+    }
+  }
+}

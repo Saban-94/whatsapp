@@ -3,7 +3,7 @@ import { motion } from 'motion/react';
 import { ArrowRight, ArrowLeft, Camera, Check, Pencil, User, Phone, CheckSquare, Plus, Trash, Loader2 } from 'lucide-react';
 import { UserProfile, Chat } from '../types';
 import { doc, setDoc } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 
 interface DrawerProps {
   onClose: () => void;
@@ -39,6 +39,7 @@ export function ProfileDrawer({ onClose, profile, onUpdateProfile, dir }: Profil
       }, { merge: true });
     } catch (err) {
       console.error('Firestore name sync failure:', err);
+      handleFirestoreError(err, OperationType.WRITE, 'joni_users/hsaban2025');
     }
   };
 
@@ -55,6 +56,7 @@ export function ProfileDrawer({ onClose, profile, onUpdateProfile, dir }: Profil
       }, { merge: true });
     } catch (err) {
       console.error('Firestore status sync failure:', err);
+      handleFirestoreError(err, OperationType.WRITE, 'joni_users/hsaban2025');
     }
   };
 
@@ -111,13 +113,18 @@ export function ProfileDrawer({ onClose, profile, onUpdateProfile, dir }: Profil
         onUpdateProfile({ ...profile, avatar: driveUrl });
 
         // 3. Save profile picture entry in Firestore database
-        await setDoc(doc(db, 'joni_users', 'hsaban2025'), {
-          name: profile.name,
-          avatar: driveUrl,
-          status: profile.status,
-          phoneNumber: profile.phoneNumber,
-          updatedAt: new Date().toISOString()
-        }, { merge: true });
+        try {
+          await setDoc(doc(db, 'joni_users', 'hsaban2025'), {
+            name: profile.name,
+            avatar: driveUrl,
+            status: profile.status,
+            phoneNumber: profile.phoneNumber,
+            updatedAt: new Date().toISOString()
+          }, { merge: true });
+        } catch (fErr) {
+          console.error('Failed to sync avatar to Firestore:', fErr);
+          handleFirestoreError(fErr, OperationType.WRITE, 'joni_users/hsaban2025');
+        }
 
         setUploadProgress('התמונה עודכנה ב-Google Drive בהצלחה! ☁️');
         setTimeout(() => setUploadProgress(''), 3000);
@@ -137,6 +144,7 @@ export function ProfileDrawer({ onClose, profile, onUpdateProfile, dir }: Profil
           }, { merge: true });
         } catch (fErr) {
           console.error('Failed to sync fallback base64 to Firestore:', fErr);
+          handleFirestoreError(fErr, OperationType.WRITE, 'joni_users/hsaban2025');
         }
 
         setUploadProgress('שגיאת חיבור. התמונה נשמרה מקומית בהצלחה! ✅');

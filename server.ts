@@ -6,8 +6,43 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  // Middleware for parsing JSON bodies
-  app.use(express.json());
+  // Middleware for parsing JSON bodies with high limit to handle large base64 images
+  app.use(express.json({ limit: '50mb' }));
+  app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+  // API Proxy Route for Google Apps Script to completely bypass CORS issues
+  app.post('/api/google-apps-script', async (req, res) => {
+    try {
+      const targetUrl = req.headers['x-target-webhook'] as string || process.env.VITE_GOOGLE_APPS_SCRIPT_WEBHOOK;
+      if (!targetUrl) {
+        return res.status(400).json({ error: 'Missing target webhook URL. Please provide x-target-webhook header.' });
+      }
+
+      console.log(`[Proxy Apps Script] Forwarding POST request to Webhook: ${targetUrl}`);
+
+      const googleRes = await fetch(targetUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(req.body),
+      });
+
+      const responseText = await googleRes.text();
+
+      let responseData;
+      try {
+        responseData = responseText ? JSON.parse(responseText) : {};
+      } catch (e) {
+        responseData = { text: responseText };
+      }
+
+      res.status(googleRes.status).json(responseData);
+    } catch (err: any) {
+      console.error('[Proxy Error] Google Apps Script Forwarding Failure:', err);
+      res.status(500).json({ error: 'Proxy Request Failed', details: err.message });
+    }
+  });
 
   // API Proxy Route for Google Tasks API to completely bypass CORS issues
   app.all('/api/tasks/*', async (req, res) => {

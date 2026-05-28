@@ -19,6 +19,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { auth, googleProvider, loginAndGetAccessToken } from '../lib/firebase';
 import { onAuthStateChanged, User, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+import { getApiUrl } from '../lib/api';
 
 // Module-level in-memory cache for the OAuth access token (Strict compliance with workspace-integration SKILL.md)
 let cachedOAuthToken: string | null = null;
@@ -139,7 +140,7 @@ export default function TasksDrawer({ onClose, dir = 'rtl' }: TasksDrawerProps) 
     if (!token) return;
     setLoading(true);
     try {
-      const res = await fetch('/api/tasks/users/@me/lists', {
+      const res = await fetch(getApiUrl('/api/tasks/users/@me/lists'), {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.status === 401) {
@@ -165,7 +166,7 @@ export default function TasksDrawer({ onClose, dir = 'rtl' }: TasksDrawerProps) 
     if (!token) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/tasks/lists/${listId}/tasks?showCompleted=true&showHidden=true`, {
+      const res = await fetch(getApiUrl(`/api/tasks/lists/${listId}/tasks?showCompleted=true&showHidden=true`), {
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = await res.json();
@@ -188,7 +189,7 @@ export default function TasksDrawer({ onClose, dir = 'rtl' }: TasksDrawerProps) 
 
     setLoading(true);
     try {
-      const res = await fetch('/api/tasks/users/@me/lists', {
+      const res = await fetch(getApiUrl('/api/tasks/users/@me/lists'), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -227,7 +228,7 @@ export default function TasksDrawer({ onClose, dir = 'rtl' }: TasksDrawerProps) 
         payload.due = new Date(newTaskDue).toISOString();
       }
 
-      const res = await fetch(`/api/tasks/lists/${selectedListId}/tasks`, {
+      const res = await fetch(getApiUrl(`/api/tasks/lists/${selectedListId}/tasks`), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -259,7 +260,7 @@ export default function TasksDrawer({ onClose, dir = 'rtl' }: TasksDrawerProps) 
 
     setLoading(true);
     try {
-      await fetch(`/api/tasks/lists/${selectedListId}/tasks/${taskId}`, {
+      await fetch(getApiUrl(`/api/tasks/lists/${selectedListId}/tasks/${taskId}`), {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -286,7 +287,7 @@ export default function TasksDrawer({ onClose, dir = 'rtl' }: TasksDrawerProps) 
     setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: newStatus } : t));
 
     try {
-      const res = await fetch(`/api/tasks/lists/${selectedListId}/tasks/${task.id}`, {
+      const res = await fetch(getApiUrl(`/api/tasks/lists/${selectedListId}/tasks/${task.id}`), {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,

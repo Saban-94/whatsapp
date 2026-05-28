@@ -4,6 +4,7 @@ import { ArrowRight, ArrowLeft, Camera, Check, Pencil, User, Phone, CheckSquare,
 import { UserProfile, Chat } from '../types';
 import { doc, setDoc } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
+import { getApiUrl } from '../lib/api';
 
 interface DrawerProps {
   onClose: () => void;
@@ -80,19 +81,19 @@ export function ProfileDrawer({ onClose, profile, onUpdateProfile, dir }: Profil
       try {
         const webhookUrl = import.meta.env.VITE_GOOGLE_APPS_SCRIPT_WEBHOOK || 'https://script.google.com/macros/s/AKfycby-mock-webhook-id/exec';
         
-        // 1. Send Base64 payload to Google Apps Script Webhook
-        const response = await fetch(webhookUrl, {
+        // 1. Send Base64 payload to Google Apps Script Webhook through our secure CORS bypass server-proxy
+        const response = await fetch(getApiUrl('/api/google-apps-script'), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'X-Target-Webhook': webhookUrl
           },
           body: JSON.stringify({
             image: base64Str,
             filename: `profile_hsaban_${Date.now()}.png`,
             mimeType: file.type,
             userEmail: 'hsaban2025@gmail.com'
-          }),
-          mode: 'cors'
+          })
         });
 
         let driveUrl = base64Str;

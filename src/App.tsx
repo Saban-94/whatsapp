@@ -9,7 +9,6 @@ import { motion, AnimatePresence } from 'motion/react';
 
 export default function App() {
   const [chats, setChats] = useState<Chat[]>(() => {
-    // Attempt to load from localStorage to keep state fresh across runs!
     const saved = localStorage.getItem('whatsapp_clone_chats');
     return saved ? JSON.parse(saved) : initialChats;
   });
@@ -24,7 +23,7 @@ export default function App() {
     return saved ? JSON.parse(saved) : mockStatuses;
   });
 
-  const [activeChatId, setActiveChatId] = useState<string | null>('1'); // Match Mom as active chat by default
+  const [activeChatId, setActiveChatId] = useState<string | null>('1'); // Matches active chat
   const [sidebarSearchTerm, setSidebarSearchTerm] = useState('');
   const [statusViewerOpen, setStatusViewerOpen] = useState(false);
   
@@ -82,7 +81,12 @@ export default function App() {
   };
 
   // ---------------- MESSAGE SENDING & SIMULATED AUTOMATIC BOT REPLY ----------------
-  const handleSendMessage = (chatId: string, text: string, mediaType: 'text' | 'image' | 'voice' = 'text') => {
+  const handleSendMessage = (
+    chatId: string, 
+    text: string, 
+    mediaType: 'text' | 'image' | 'voice' = 'text', 
+    mediaUrl?: string
+  ) => {
     const newMessageId = `${chatId}-${Date.now()}`;
     const timestamp = getFormattedTime();
 
@@ -93,7 +97,7 @@ export default function App() {
       timestamp,
       status: 'sent',
       mediaType,
-      mediaUrl: mediaType === 'image' ? 'https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?auto=format&fit=crop&w=500&q=80' : undefined,
+      mediaUrl,
       mediaDuration: mediaType === 'voice' ? '0:06' : undefined
     };
 
@@ -116,7 +120,6 @@ export default function App() {
     });
 
     // 2. Simulate progressive message status states
-    // 'sent' -> 300ms -> 'delivered' -> 800ms -> 'read' (if still active)
     setTimeout(() => {
       setChats(prev => prev.map(c => {
         if (c.id === chatId) {

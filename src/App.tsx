@@ -6,6 +6,7 @@ import ChatWindow from './components/ChatWindow';
 import StatusViewer from './components/StatusViewer';
 import { ProfileDrawer, NewChatDrawer, SettingsDrawer } from './components/Drawers';
 import { motion, AnimatePresence } from 'motion/react';
+import AdminPanel from './components/AdminPanel';
 
 export default function App() {
   const [chats, setChats] = useState<Chat[]>(() => {
@@ -26,6 +27,7 @@ export default function App() {
   const [activeChatId, setActiveChatId] = useState<string | null>('1'); // Matches active chat
   const [sidebarSearchTerm, setSidebarSearchTerm] = useState('');
   const [statusViewerOpen, setStatusViewerOpen] = useState(false);
+  const [isAdminOpen, setIsAdminOpen] = useState(false);
   
   // Drawer slider control
   const [activeDrawer, setActiveDrawer] = useState<'profile' | 'newChat' | 'settings' | null>(null);
@@ -260,6 +262,47 @@ export default function App() {
     setActiveChatId(newChatId);
   };
 
+  const handleImportContact = (name: string, phone: string, avatarUrl: string) => {
+    const existing = chats.find(c => c.phoneNumber === phone || c.name === name);
+    if (existing) {
+      setActiveChatId(existing.id);
+      setIsAdminOpen(false);
+      return;
+    }
+
+    const newChatId = `imported-${Date.now()}`;
+    const newChatObj: Chat = {
+      id: newChatId,
+      name,
+      avatar: avatarUrl,
+      statusText: 'זמין/ה (מתואם JONI)',
+      isOnline: true,
+      unreadCount: 0,
+      phoneNumber: phone,
+      description: 'איש קשר סונכרן מ-Google Contacts 🔄',
+      messages: [
+        {
+          id: `new-${newChatId}`,
+          text: `סנכרנת בהצלחה את השיחה עם ${name}! מוצפן ומאובטח דרך מערכת JONI 🔒`,
+          timestamp: getFormattedTime(),
+          isOutgoing: false
+        }
+      ]
+    };
+
+    setChats(prev => [newChatObj, ...prev]);
+    setActiveChatId(newChatId);
+    setIsAdminOpen(false);
+  };
+
+  const handleDeleteChatCompletely = (chatId: string) => {
+    if (chatId === '1') return;
+    setChats(prev => prev.filter(c => c.id !== chatId));
+    if (activeChatId === chatId) {
+      setActiveChatId('1');
+    }
+  };
+
   const handleMarkAllAsRead = () => {
     setChats(prev => prev.map(c => ({ ...c, unreadCount: 0 })));
     alert('כל השיחות סומנו כנקראו בהצלחה!');
@@ -395,6 +438,7 @@ export default function App() {
               wallpaperTheme={wallpaperTheme}
               onDeleteChat={handleDeleteChatHistory}
               chats={chats}
+              onOpenAdmin={() => setIsAdminOpen(true)}
             />
           </div>
 
@@ -418,6 +462,19 @@ export default function App() {
               onMarkAsViewed={handleMarkStatusAsViewed}
             />
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ADMIN PANEL DRAWER */}
+      <AnimatePresence>
+        {isAdminOpen && (
+          <AdminPanel 
+            isOpen={isAdminOpen}
+            onClose={() => setIsAdminOpen(false)}
+            chats={chats}
+            onImportContact={handleImportContact}
+            onDeleteChat={handleDeleteChatCompletely}
+          />
         )}
       </AnimatePresence>
     </div>

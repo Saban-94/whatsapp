@@ -20,6 +20,16 @@ export const db = getFirestore(app, "ai-studio-cc5d2687-b402-4b97-b808-5ba700689
 export const auth = getAuth(app);
 export const storage = getStorage(app);
 export const googleProvider = new GoogleAuthProvider();
+googleProvider.addScope("https://www.googleapis.com/auth/contacts");
+
+export const loginAndGetAccessToken = async () => {
+  const result = await signInWithPopup(auth, googleProvider);
+  const credential = GoogleAuthProvider.credentialFromResult(result);
+  return {
+    user: result.user,
+    accessToken: credential?.accessToken || null,
+  };
+};
 
 export const loginWithGoogle = () => signInWithPopup(auth, googleProvider);
 export const logout = () => auth.signOut();

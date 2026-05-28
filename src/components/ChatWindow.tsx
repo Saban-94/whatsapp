@@ -40,6 +40,7 @@ interface ChatWindowProps {
   onBackToMenu?: () => void;
   onDeleteChat: (id: string) => void;
   chats: Chat[];
+  onOpenAdmin: () => void;
 }
 
 export default function ChatWindow({
@@ -51,6 +52,7 @@ export default function ChatWindow({
   onBackToMenu,
   onDeleteChat,
   chats,
+  onOpenAdmin,
 }: ChatWindowProps) {
   const [inputText, setInputText] = useState('');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -273,7 +275,12 @@ export default function ChatWindow({
       <div className="flex-1 flex flex-col h-full bg-[#efeae2] relative overflow-hidden">
         
         {/* Header */}
-        <div id="chat-window-header" className="h-[60px] bg-white/80 backdrop-blur-md px-4 py-2.5 flex items-center justify-between z-10 select-none border-b border-gray-200">
+        <div 
+          id="chat-window-header" 
+          onDoubleClick={onOpenAdmin} 
+          className="h-[60px] bg-white/80 backdrop-blur-md px-4 py-2.5 flex items-center justify-between z-10 select-none border-b border-gray-200 cursor-pointer"
+          title="לחיצה כפולה לפתיחת פאנל ניהול"
+        >
           <div className="flex items-center gap-3">
             {onBackToMenu && (
               <button onClick={onBackToMenu} className="lg:hidden p-1 hover:bg-gray-100 rounded-full text-[#007AFF] mr-[-5px]">

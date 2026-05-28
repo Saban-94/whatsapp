@@ -22,10 +22,13 @@ import {
   Sparkles,
   Info,
   Play,
-  Pause
+  Pause,
+  Download,
+  Loader2
 } from 'lucide-react';
 import { Chat, Message, UserProfile } from '../types';
 import DoodleBackground from './DoodleBackground';
+import { storage } from '../lib/firebase';
 
 // דרישות לממשק הפרופס
 interface ChatWindowProps {
@@ -59,11 +62,16 @@ export default function ChatWindow({
   const [voicePlayingId, setVoicePlayingId] = useState<string | null>(null);
   const [voiceProgress, setVoiceProgress] = useState(0);
   const [isNoaProcessing, setIsNoaProcessing] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   // States for the newly requested "forward message" functionality
   const [messageToForward, setMessageToForward] = useState<Message | null>(null);
   const [forwardSearchQuery, setForwardSearchQuery] = useState('');
   const [forwardSentMap, setForwardSentMap] = useState<Record<string, boolean>>({});
+
+  // Refs for real file uploads
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const docInputRef = useRef<HTMLInputElement>(null);
 
   // טיימר לניגון הודעות קוליות
   useEffect(() => {
@@ -110,6 +118,102 @@ export default function ChatWindow({
     );
   }
 
+  // פונקציה להעלאת קבצים אמיתית ל-Firebase Storage
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, mediaType: 'image' | 'doc') => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const { ref, uploadBytes, getDownloadURL } = await import('firebase/storage');
+      const fileRef = ref(storage, `chats/${chat.id}/${Date.now()}_${file.name}`);
+      
+      console.log('Uploading file to Firebase Storage path:', fileRef.fullPath);
+      await uploadBytes(fileRef, file);
+      
+      const downloadUrl = await getDownloadURL(fileRef);
+      console.log('Successfully uploaded and retrieved download URL:', downloadUrl);
+      
+      // שליחת הודעה עם הקישור האמיתי לקובץ
+      onSendMessage(chat.id, file.name, mediaType === 'image' ? 'image' : 'text', downloadUrl);
+    } catch (error: any) {
+      console.error('Failed to upload file to Firebase Storage:', error);
+      alert(`שגיאה בהעלאת קובץ: ${error.message || 'אנא ודא שחיבור ה-Firebase תקין והגדרות ה-CORS מאושרות'}`);
+    } finally {
+      setIsUploading(false);
+      event.target.value = '';
+    }
+  };
+
+  // פונקציית הורדה בטוחה עם Firebase Storage וגלישה לפולבק למניעת קריסה
+  const handleDownloadFile = async (url?: string, filename: string = 'file') => {
+    if (!url) {
+      console.warn('Cannot download file: URL is empty.');
+      return;
+    }
+
+    try {
+      const { ref, getDownloadURL } = await import('firebase/storage');
+      let finalUrl = url;
+      
+      // אם הנתיב הוא Firebase Storage (כתובת gs:// או HTTP ייחודי של Firebase)
+      if (url.startsWith('gs://') || url.includes('firebasestorage.googleapis.com')) {
+        try {
+          let storageRef;
+          if (url.startsWith('gs://')) {
+            storageRef = ref(storage, url);
+          } else {
+            // חילוץ נתיב הקובץ מתוך קישור ה-URL
+            const decodedUrl = decodeURIComponent(url);
+            const pathStartIndex = decodedUrl.indexOf('/o/') + 3;
+            const pathEndIndex = decodedUrl.indexOf('?');
+            if (pathStartIndex > 2 && pathEndIndex > pathStartIndex) {
+              const storagePath = decodedUrl.substring(pathStartIndex, pathEndIndex);
+              storageRef = ref(storage, storagePath);
+            } else {
+              storageRef = ref(storage, url);
+            }
+          }
+          finalUrl = await getDownloadURL(storageRef);
+        } catch (storageError) {
+          console.error("Firebase Storage getDownloadURL failure:", storageError);
+          // במקרה של שגיאה, המשך עם ה-URL המקורי כפולבק
+        }
+      }
+
+      console.log('Downloading file from URL:', finalUrl);
+      const res = await fetch(finalUrl);
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+      const blob = await res.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (error: any) {
+      console.error('Download failed (likely CORS policy or invalid path):', error);
+      
+      // פתרון פולבק למניעת אי-נוחות לקוח: פתיחה בטאב נפרד להורדה ישירה דרך הדפדפן
+      try {
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('target', '_blank');
+        link.setAttribute('rel', 'noopener noreferrer');
+        link.setAttribute('download', filename);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } catch (fallbackError) {
+        console.error('Fallback download failed as well:', fallbackError);
+        alert(`שגיאת אבטחה (CORS): לא ניתן להוריד את הקובץ ישירות. אנא לחץ לחיצה ימנית על התמונה או הקישור ושמור ידנית.`);
+      }
+    }
+  };
+
   // שדרוג 1: פונקציית שליחה מותאמת לפרוטוקול JONI
   const handleSend = () => {
     if (!inputText.trim()) return;
@@ -138,11 +242,11 @@ export default function ChatWindow({
   // שדרוג 3: הכנה להעלאת קבצים אמיתית
   const handleSendMedia = (type: 'image' | 'voice' | 'document') => {
     if (type === 'image') {
-      onSendMessage(chat.id, 'תמונה צורפה', 'image', 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=500&q=80');
+      imageInputRef.current?.click();
     } else if (type === 'voice') {
       onSendMessage(chat.id, 'הודעה קולית', 'voice');
     } else if (type === 'document') {
-      onSendMessage(chat.id, 'דוח יתרות בוקר.pdf', 'text');
+      docInputRef.current?.click();
     }
     setShowAttachMenu(false);
   };
@@ -249,12 +353,38 @@ export default function ChatWindow({
                     )}
 
                     {msg.mediaType === 'image' && (
-                      <div className="rounded-xl overflow-hidden mb-2 max-h-[250px]">
+                      <div className="rounded-xl overflow-hidden mb-2 max-h-[250px] relative group/img">
                         <img src={msg.mediaUrl} alt="Attachment" className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 flex items-center justify-center transition-opacity">
+                          <button 
+                            onClick={() => handleDownloadFile(msg.mediaUrl, msg.text)}
+                            className="bg-white/95 text-gray-800 p-2 rounded-full shadow-md hover:bg-white flex items-center justify-center transition-all hover:scale-105 cursor-pointer border-0"
+                            title="הורד קובץ"
+                          >
+                            <Download className="w-4 h-4 text-[#007AFF]" />
+                          </button>
+                        </div>
                       </div>
                     )}
 
-                    {msg.mediaType === 'voice' ? (
+                    {((msg.mediaUrl && msg.mediaType !== 'image' && msg.mediaType !== 'voice') || msg.text.endsWith('.pdf')) ? (
+                      <div className="flex items-center gap-3 bg-black/5 hover:bg-black/10 transition-colors p-2.5 rounded-lg border border-black/10 mb-2 min-w-[210px] text-right">
+                        <div className="w-10 h-10 rounded-md bg-white/80 text-red-500 flex items-center justify-center font-bold text-xs shrink-0 select-none shadow-xs">
+                          <File className="w-5 h-5 text-red-500" />
+                        </div>
+                        <div className="flex-1 text-right min-w-0">
+                          <p className="text-xs font-semibold truncate text-gray-800" title={msg.text}>{msg.text}</p>
+                          <p className="text-[10px] text-gray-400">מסמך מאובטח JONI - ח. סבן</p>
+                        </div>
+                        <button
+                          onClick={() => handleDownloadFile(msg.mediaUrl || 'https://saban-ai-drive.firebasestorage.app/demo.pdf', msg.text)}
+                          className="bg-white text-gray-700 hover:text-[#007AFF] border border-gray-200 p-1.5 rounded-md hover:bg-gray-50 flex items-center justify-center cursor-pointer shrink-0"
+                          title="הורד קובץ"
+                        >
+                          <Download className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : msg.mediaType === 'voice' ? (
                       <div className="flex items-center gap-3 py-1">
                         <button onClick={() => setVoicePlayingId(voicePlayingId === msg.id ? null : msg.id)} className={`w-9 h-9 rounded-full flex items-center justify-center transition-transform ${isOut ? 'bg-white text-[#007AFF]' : 'bg-[#007AFF] text-white'}`}>
                           {voicePlayingId === msg.id ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current ml-0.5" />}
@@ -303,6 +433,29 @@ export default function ChatWindow({
 
         {/* Input Area */}
         <div className="bg-white/80 backdrop-blur-md px-4 py-3 flex items-center gap-3 z-10 relative border-t border-gray-200">
+          
+          {/* Hidden inputs for real file uploads */}
+          <input
+            type="file"
+            ref={imageInputRef}
+            onChange={(e) => handleFileUpload(e, 'image')}
+            accept="image/*"
+            style={{ display: 'none' }}
+          />
+          <input
+            type="file"
+            ref={docInputRef}
+            onChange={(e) => handleFileUpload(e, 'doc')}
+            accept=".pdf,.doc,.docx,.xls,.xlsx,.txt"
+            style={{ display: 'none' }}
+          />
+
+          {isUploading && (
+            <div className="absolute inset-0 bg-white/95 backdrop-blur-xs flex items-center justify-center gap-3 z-20 transition-all">
+              <Loader2 className="w-5 h-5 text-[#007AFF] animate-spin" />
+              <span className="text-sm text-gray-700 font-medium">מעלה קובץ מאובטח ל-Drive של ח. סבן...</span>
+            </div>
+          )}
           
           {/* Noa AI Button */}
           <button 

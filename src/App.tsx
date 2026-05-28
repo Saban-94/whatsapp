@@ -45,6 +45,69 @@ export default function App() {
     return (saved as any) || 'right'; // Default to RTL layout: right
   });
 
+  // PWA and Mobile-Responsive States
+  const [isMobile, setIsMobile] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [showInstallBanner, setShowInstallBanner] = useState(false);
+  const [isIOS, setIsIOS] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    // Start index list view initially on mobile devices for the best onboarding feel
+    if (window.innerWidth < 768) {
+      setActiveChatId(null);
+    }
+
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowInstallBanner(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    // Identify iOS Safari users so we can display neat "Add to Home Screen" instructions
+    const checkIOS = () => {
+      const userAgent = window.navigator.userAgent.toLowerCase();
+      const isIOSDevice = /iphone|ipad|ipod/.test(userAgent);
+      const isStandalone = (window.navigator as any).standalone === true;
+      setIsIOS(isIOSDevice && !isStandalone);
+    };
+    checkIOS();
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    console.log(`User prompt conversion outcome: ${outcome}`);
+    setDeferredPrompt(null);
+    setShowInstallBanner(false);
+  };
+
+  const playIncomingSound = () => {
+    try {
+      const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-84.wav');
+      audio.volume = 0.45;
+      audio.play();
+    } catch (err) {
+      console.error('Failed playing audio notification:', err);
+    }
+  };
+
   // Persist states to local storage
   useEffect(() => {
     localStorage.setItem('whatsapp_clone_chats', JSON.stringify(chats));
@@ -218,6 +281,8 @@ export default function App() {
         timestamp: getFormattedTime()
       };
 
+      playIncomingSound();
+
       setChats(prev => {
         const updated = prev.map(chat => {
           if (chat.id === chatId) {
@@ -360,111 +425,168 @@ export default function App() {
   const activeChat = chats.find(c => c.id === activeChatId) || null;
 
   return (
-    <div id="whatsapp-web-app-root" className="h-screen w-screen flex flex-col bg-[#e1e2e3] font-sans antialiased overflow-hidden" dir="rtl">
-      {/* Top Banner Accent behind the desk frame */}
-      <div className="absolute top-0 inset-x-0 h-[127px] bg-[#00a884] z-0 select-none pointer-events-none" />
+    <div id="whatsapp-web-app-root" className="h-[100dvh] w-screen flex flex-col bg-[#e1e2e3] font-sans antialiased overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]" dir="rtl">
+      {/* Top Banner Accent behind the desk frame (hidden on mobile) */}
+      {!isMobile && (
+        <div className="absolute top-0 inset-x-0 h-[127px] bg-[#00a884] z-0 select-none pointer-events-none" />
+      )}
 
       {/* Primary Application Container Grid */}
-      <div className="flex-1 w-full max-w-7xl mx-auto h-[95vh] my-auto relative z-10 flex bg-[#f0f2f5] shadow-2xl overflow-hidden self-center rounded-sm border border-gray-300">
+      <div className={`flex-grow relative z-10 flex overflow-hidden ${
+        isMobile 
+          ? 'w-full h-full bg-white' 
+          : 'w-full max-w-7xl mx-auto h-[95vh] my-auto bg-[#f0f2f5] shadow-2xl rounded-sm border border-gray-300 self-center'
+      }`}>
         
         {/* Sidebar and Chat Layout wrapper based on Custom direction order preference */}
-        <div className={`w-full h-full flex flex-row ${sidebarPosition === 'left' ? 'flex-row-reverse' : ''}`}>
+        <div className={`w-full h-full flex flex-row ${!isMobile && sidebarPosition === 'left' ? 'flex-row-reverse' : ''}`}>
           
-          {/* 30% LEFT/RIGHT CHAT INDEX PANEL */}
-          <div className="w-[30%] min-w-[340px] max-w-[420px] h-full bg-white relative flex flex-col z-10 border-l border-r border-[#e9edef]">
-            {/* Drawer Sliding System with Motion effects */}
-            <AnimatePresence>
-              {activeDrawer === 'profile' && (
-                <motion.div 
-                  initial={{ x: sidebarPosition === 'right' ? 380 : -380 }} 
-                  animate={{ x: 0 }} 
-                  exit={{ x: sidebarPosition === 'right' ? 380 : -380 }} 
-                  transition={{ type: 'tween', duration: 0.22 }}
-                  className="absolute inset-0 z-20"
-                >
-                  <ProfileDrawer 
-                    dir="rtl"
-                    profile={currentUser} 
-                    onUpdateProfile={setCurrentUser} 
-                    onClose={() => setActiveDrawer(null)} 
-                  />
-                </motion.div>
-              )}
+          {/* LEFT/RIGHT CHAT INDEX PANEL - Hidden on mobile if a chat is active */}
+          {(!isMobile || activeChatId === null) && (
+            <div className={`${
+              isMobile 
+                ? 'w-full h-full' 
+                : 'w-[30%] min-w-[340px] max-w-[420px]'
+            } h-full bg-white relative flex flex-col z-10 border-l border-r border-[#e9edef]`}>
+              {/* Drawer Sliding System with Motion effects */}
+              <AnimatePresence>
+                {activeDrawer === 'profile' && (
+                  <motion.div 
+                    initial={{ x: sidebarPosition === 'right' ? 380 : -380 }} 
+                    animate={{ x: 0 }} 
+                    exit={{ x: sidebarPosition === 'right' ? 380 : -380 }} 
+                    transition={{ type: 'tween', duration: 0.22 }}
+                    className="absolute inset-0 z-20"
+                  >
+                    <ProfileDrawer 
+                      dir="rtl"
+                      profile={currentUser} 
+                      onUpdateProfile={setCurrentUser} 
+                      onClose={() => setActiveDrawer(null)} 
+                    />
+                  </motion.div>
+                )}
 
-              {activeDrawer === 'newChat' && (
-                <motion.div 
-                  initial={{ x: sidebarPosition === 'right' ? 380 : -380 }} 
-                  animate={{ x: 0 }} 
-                  exit={{ x: sidebarPosition === 'right' ? 380 : -380 }} 
-                  transition={{ type: 'tween', duration: 0.22 }} 
-                  className="absolute inset-0 z-20"
-                >
-                  <NewChatDrawer 
-                    dir="rtl"
-                    chats={chats}
-                    onSelectChat={setActiveChatId}
-                    onAddNewContact={handleAddNewContact}
-                    onClose={() => setActiveDrawer(null)}
-                  />
-                </motion.div>
-              )}
+                {activeDrawer === 'newChat' && (
+                  <motion.div 
+                    initial={{ x: sidebarPosition === 'right' ? 380 : -380 }} 
+                    animate={{ x: 0 }} 
+                    exit={{ x: sidebarPosition === 'right' ? 380 : -380 }} 
+                    transition={{ type: 'tween', duration: 0.22 }} 
+                    className="absolute inset-0 z-20"
+                  >
+                    <NewChatDrawer 
+                      dir="rtl"
+                      chats={chats}
+                      onSelectChat={(id) => {
+                        setActiveChatId(id);
+                        setActiveDrawer(null);
+                      }}
+                      onAddNewContact={handleAddNewContact}
+                      onClose={() => setActiveDrawer(null)}
+                    />
+                  </motion.div>
+                )}
 
-              {activeDrawer === 'settings' && (
-                <motion.div 
-                  initial={{ x: sidebarPosition === 'right' ? 380 : -380 }} 
-                  animate={{ x: 0 }} 
-                  exit={{ x: sidebarPosition === 'right' ? 380 : -380 }} 
-                  transition={{ type: 'tween', duration: 0.22 }} 
-                  className="absolute inset-0 z-20"
-                >
-                  <SettingsDrawer 
-                    dir="rtl"
-                    currentTheme={wallpaperTheme}
-                    onThemeChange={setWallpaperTheme}
-                    sidebarPosition={sidebarPosition}
-                    onSidebarPositionChange={setSidebarPosition}
-                    onClearChats={handleClearChatsToDefault}
-                    onClose={() => setActiveDrawer(null)}
-                  />
-                </motion.div>
-              )}
-            </AnimatePresence>
+                {activeDrawer === 'settings' && (
+                  <motion.div 
+                    initial={{ x: sidebarPosition === 'right' ? 380 : -380 }} 
+                    animate={{ x: 0 }} 
+                    exit={{ x: sidebarPosition === 'right' ? 380 : -380 }} 
+                    transition={{ type: 'tween', duration: 0.22 }} 
+                    className="absolute inset-0 z-20"
+                  >
+                    <SettingsDrawer 
+                      dir="rtl"
+                      currentTheme={wallpaperTheme}
+                      onThemeChange={setWallpaperTheme}
+                      sidebarPosition={sidebarPosition}
+                      onSidebarPositionChange={setSidebarPosition}
+                      onClearChats={handleClearChatsToDefault}
+                      onClose={() => setActiveDrawer(null)}
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
-            {/* Sidebar View */}
-            <Sidebar 
-              dir="rtl"
-              chats={filteredChats}
-              activeChatId={activeChatId}
-              onSelectChat={setActiveChatId}
-              currentUser={currentUser}
-              statuses={statuses}
-              onOpenStatus={() => setStatusViewerOpen(true)}
-              onOpenProfile={() => setActiveDrawer('profile')}
-              onOpenNewChat={() => setActiveDrawer('newChat')}
-              onOpenSettings={() => setActiveDrawer('settings')}
-              onMarkAllAsRead={handleMarkAllAsRead}
-              searchTerm={sidebarSearchTerm}
-              onSearchChange={setSidebarSearchTerm}
-            />
-          </div>
+              {/* Sidebar View */}
+              <Sidebar 
+                dir="rtl"
+                chats={filteredChats}
+                activeChatId={activeChatId}
+                onSelectChat={setActiveChatId}
+                currentUser={currentUser}
+                statuses={statuses}
+                onOpenStatus={() => setStatusViewerOpen(true)}
+                onOpenProfile={() => setActiveDrawer('profile')}
+                onOpenNewChat={() => setActiveDrawer('newChat')}
+                onOpenSettings={() => setActiveDrawer('settings')}
+                onMarkAllAsRead={handleMarkAllAsRead}
+                searchTerm={sidebarSearchTerm}
+                onSearchChange={setSidebarSearchTerm}
+              />
+            </div>
+          )}
 
-          {/* 70% CHAT SCREEN ACTIVE AREA */}
-          <div className="flex-1 h-full flex flex-col relative bg-[#efeae2]">
-            <ChatWindow 
-              dir="rtl"
-              chat={activeChat}
-              onSendMessage={handleSendMessage}
-              currentUser={currentUser}
-              wallpaperTheme={wallpaperTheme}
-              onDeleteChat={handleDeleteChatCompletely}
-              chats={chats}
-              onOpenAdmin={() => setIsAdminOpen(true)}
-            />
-          </div>
+          {/* CHAT SCREEN ACTIVE AREA - Hidden on mobile if no chat is active */}
+          {(!isMobile || activeChatId !== null) && (
+            <div className="flex-1 h-full flex flex-col relative bg-[#efeae2]">
+              <ChatWindow 
+                dir="rtl"
+                chat={activeChat}
+                onSendMessage={handleSendMessage}
+                currentUser={currentUser}
+                wallpaperTheme={wallpaperTheme}
+                onBackToMenu={() => setActiveChatId(null)}
+                onDeleteChat={handleDeleteChatCompletely}
+                chats={chats}
+                onOpenAdmin={() => setIsAdminOpen(true)}
+              />
+            </div>
+          )}
 
         </div>
 
       </div>
+
+      {/* Android/Chrome Custom Installation Banner */}
+      {showInstallBanner && (
+        <div className="fixed top-4 left-4 right-4 md:left-auto md:w-96 bg-white rounded-xl shadow-2xl p-4 border border-gray-150 z-50 flex items-center justify-between select-none animate-bounce" dir="rtl">
+          <div className="flex items-center gap-3">
+            <img src="https://img.icons8.com/color/48/000000/whatsapp--v1.png" alt="WhatsApp" className="w-10 h-10 shrink-0" />
+            <div className="text-right">
+              <div className="font-semibold text-sm text-gray-900">התקן את האפליקציה במכשיר!</div>
+              <div className="text-xs text-gray-500">לחוויית ניהול מהירה ומסך מלא ללא שורת הדפדפן 📱</div>
+            </div>
+          </div>
+          <div className="flex gap-1 shrink-0">
+            <button onClick={() => setShowInstallBanner(false)} className="px-2.5 py-1.5 text-xs text-gray-400 hover:text-gray-600 bg-transparent border-0 cursor-pointer">
+              סגור
+            </button>
+            <button onClick={handleInstallClick} className="px-4 py-1.5 text-xs text-white bg-[#00a884] hover:bg-[#008f6f] font-semibold rounded-lg shadow-sm cursor-pointer border-0 active:scale-95 transition-all">
+              התקן
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* iOS Instructions Floating Drawer (Share -> Add to Home Screen) */}
+      {isIOS && (
+        <div className="fixed bottom-4 left-4 right-4 bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl p-4 border border-gray-200/50 z-50 select-none text-right flex flex-col gap-2 transition-transform" dir="rtl">
+          <div className="flex items-start gap-3">
+            <img src="https://img.icons8.com/color/48/000000/whatsapp--v1.png" alt="WhatsApp" className="w-10 h-10 shrink-0 object-cover rounded-xl" />
+            <div className="flex-1">
+              <div className="font-semibold text-sm text-gray-900">הוסף את וואטסאפ למסך הבית!</div>
+              <div className="text-[11px] text-gray-600 mt-1 leading-relaxed">
+                לחץ על כפתור השיתוף בתפריט הדפדפן <b>(כפתור השיתוף <span className="inline-block px-1 py-0.5 bg-gray-100 rounded">📄</span>)</b> ולאחר מכן גלול מטה ובחר באפשרות <b>'הוסף למסך הבית' <span className="inline-block px-1.5 py-0.5 bg-gray-100 rounded font-bold">+</span></b>.
+              </div>
+            </div>
+            <button onClick={() => setIsIOS(false)} className="text-gray-400 hover:text-gray-650 bg-transparent border-0 cursor-pointer p-1">
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* FULL SCREEN DYNAMIC STATUS STORY VIEW MODAL */}
       <AnimatePresence>

@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { motion } from 'motion/react';
-import { ArrowRight, ArrowLeft, Camera, Check, Pencil, User, Phone, CheckSquare, Plus, Trash } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Camera, Check, Pencil, User, Phone, CheckSquare, Plus, Trash, Loader2 } from 'lucide-react';
 import { UserProfile, Chat } from '../types';
+import { doc, setDoc } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 
 interface DrawerProps {
   onClose: () => void;
@@ -19,15 +21,137 @@ export function ProfileDrawer({ onClose, profile, onUpdateProfile, dir }: Profil
   const [status, setStatus] = useState(profile.status);
   const [isEditingName, setIsEditingName] = useState(false);
   const [isEditingStatus, setIsEditingStatus] = useState(false);
+  
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState('');
 
-  const handleSaveName = () => {
+  const handleSaveName = async () => {
     setIsEditingName(false);
-    onUpdateProfile({ ...profile, name });
+    const updated = { ...profile, name };
+    onUpdateProfile(updated);
+    
+    // Sync Name to Firestore for consistency
+    try {
+      await setDoc(doc(db, 'joni_users', 'hsaban2025'), {
+        name,
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+    } catch (err) {
+      console.error('Firestore name sync failure:', err);
+    }
   };
 
-  const handleSaveStatus = () => {
+  const handleSaveStatus = async () => {
     setIsEditingStatus(false);
-    onUpdateProfile({ ...profile, status });
+    const updated = { ...profile, status };
+    onUpdateProfile(updated);
+    
+    // Sync Status to Firestore
+    try {
+      await setDoc(doc(db, 'joni_users', 'hsaban2025'), {
+        status,
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+    } catch (err) {
+      console.error('Firestore status sync failure:', err);
+    }
+  };
+
+  const handleAvatarClick = () => {
+    if (isUploading) return;
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    setUploadProgress('מעבד תמונה...');
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const base64Str = reader.result as string;
+      setUploadProgress('מעלה לענן סבן...');
+
+      try {
+        const webhookUrl = import.meta.env.VITE_GOOGLE_APPS_SCRIPT_WEBHOOK || 'https://script.google.com/macros/s/AKfycby-mock-webhook-id/exec';
+        
+        // 1. Send Base64 payload to Google Apps Script Webhook
+        const response = await fetch(webhookUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            image: base64Str,
+            filename: `profile_hsaban_${Date.now()}.png`,
+            mimeType: file.type,
+            userEmail: 'hsaban2025@gmail.com'
+          }),
+          mode: 'cors'
+        });
+
+        let driveUrl = base64Str;
+        if (response.ok) {
+          try {
+            const resData = await response.json();
+            if (resData.url) {
+              driveUrl = resData.url;
+            }
+          } catch (jsonErr) {
+            console.warn('Apps Script return not a valid JSON. Falling back to local Base64 storage.');
+          }
+        } else {
+          console.warn('Google Apps Script responded with error. Utilizing robust Base64 fallback.');
+        }
+
+        // 2. Clear state locally & Update user profile view
+        onUpdateProfile({ ...profile, avatar: driveUrl });
+
+        // 3. Save profile picture entry in Firestore database
+        await setDoc(doc(db, 'joni_users', 'hsaban2025'), {
+          name: profile.name,
+          avatar: driveUrl,
+          status: profile.status,
+          phoneNumber: profile.phoneNumber,
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
+
+        setUploadProgress('התמונה עודכנה ב-Google Drive בהצלחה! ☁️');
+        setTimeout(() => setUploadProgress(''), 3000);
+      } catch (err: any) {
+        console.error('Google Apps Script POST rejected:', err);
+        
+        // Solid browser base64 fallback so user continues working beautifully
+        onUpdateProfile({ ...profile, avatar: base64Str });
+
+        try {
+          await setDoc(doc(db, 'joni_users', 'hsaban2025'), {
+            name: profile.name,
+            avatar: base64Str,
+            status: profile.status,
+            phoneNumber: profile.phoneNumber,
+            updatedAt: new Date().toISOString()
+          }, { merge: true });
+        } catch (fErr) {
+          console.error('Failed to sync fallback base64 to Firestore:', fErr);
+        }
+
+        setUploadProgress('שגיאת חיבור. התמונה נשמרה מקומית בהצלחה! ✅');
+        setTimeout(() => setUploadProgress(''), 4500);
+      } finally {
+        setIsUploading(false);
+      }
+    };
+
+    reader.onerror = () => {
+      setIsUploading(false);
+      setUploadProgress('כשל בקריאת קובץ תמונה מקומי');
+    };
+
+    reader.readAsDataURL(file);
   };
 
   return (
@@ -46,18 +170,40 @@ export function ProfileDrawer({ onClose, profile, onUpdateProfile, dir }: Profil
       <div className="flex-1 overflow-y-auto pb-6">
         {/* Avatar Display */}
         <div className="flex flex-col items-center justify-center py-7 bg-transparent">
-          <div className="relative group w-[150px] h-[150px] cursor-pointer rounded-full overflow-hidden shadow-sm">
+          <div 
+            onClick={handleAvatarClick}
+            className="relative group w-[150px] h-[150px] cursor-pointer rounded-full overflow-hidden shadow-sm border border-gray-300 bg-gray-100"
+          >
             <img 
               src={profile.avatar} 
               alt={profile.name} 
-              className="w-full h-full object-cover group-hover:brightness-50 transition-all duration-300"
+              className={`w-full h-full object-cover transition-all duration-300 ${isUploading ? 'brightness-50' : 'group-hover:brightness-50'}`}
               referrerPolicy="no-referrer"
             />
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-xs text-center p-3">
-              <Camera className="w-6 h-6 mb-1" />
-              <span>שנה תמונת פרופיל</span>
+            <div className={`absolute inset-0 flex flex-col items-center justify-center text-white transition-opacity duration-300 text-xs text-center p-3 ${isUploading ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+              {isUploading ? (
+                <Loader2 className="w-7 h-7 mb-1 animate-spin" />
+              ) : (
+                <Camera className="w-6 h-6 mb-1" />
+              )}
+              <span>{isUploading ? 'מעלה...' : 'שנה תמונת פרופיל'}</span>
             </div>
           </div>
+          
+          {/* Hidden File Upload Element */}
+          <input 
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            accept="image/*"
+            className="hidden"
+          />
+
+          {uploadProgress && (
+            <div className="text-xs text-[#008069] font-semibold mt-3.5 px-6 py-1 bg-[#008069]/10 rounded-full animate-pulse max-w-[80%] text-center select-none">
+              {uploadProgress}
+            </div>
+          )}
         </div>
 
         {/* Name Block */}

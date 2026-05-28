@@ -382,6 +382,10 @@ export default function App() {
     }
   };
 
+  const handleTogglePinChat = (chatId: string) => {
+    setChats(prev => prev.map(c => c.id === chatId ? { ...c, pinned: !c.pinned } : c));
+  };
+
   const handleMarkAllAsRead = () => {
     setChats(prev => prev.map(c => ({ ...c, unreadCount: 0 })));
     alert('כל השיחות סומנו כנקראו בהצלחה!');
@@ -541,6 +545,7 @@ export default function App() {
                 onDeleteChat={handleDeleteChatCompletely}
                 chats={chats}
                 onOpenAdmin={() => setIsAdminOpen(true)}
+                onTogglePinChat={handleTogglePinChat}
               />
             </div>
           )}

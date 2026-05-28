@@ -25,7 +25,8 @@ import {
   Pause,
   Download,
   Loader2,
-  Copy
+  Copy,
+  Pin
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Chat, Message, UserProfile } from '../types';
@@ -43,6 +44,7 @@ interface ChatWindowProps {
   onDeleteChat: (id: string) => void;
   chats: Chat[];
   onOpenAdmin: () => void;
+  onTogglePinChat?: (id: string) => void;
 }
 
 export default function ChatWindow({
@@ -55,6 +57,7 @@ export default function ChatWindow({
   onDeleteChat,
   chats,
   onOpenAdmin,
+  onTogglePinChat,
 }: ChatWindowProps) {
   const [inputText, setInputText] = useState('');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -360,6 +363,18 @@ export default function ChatWindow({
                   <div className="absolute left-0 mt-2 w-48 bg-white/95 backdrop-blur-xl rounded-xl shadow-lg py-1.5 z-20 border border-gray-100 text-right text-[13px]">
                     <button onClick={() => { setShowDetailsPanel(true); setIsMenuOpen(false); }} className="w-full px-4 py-2.5 hover:bg-gray-50 flex items-center gap-3 text-gray-800">
                       <Info className="w-4 h-4 text-gray-400" /> פרטי איש קשר
+                    </button>
+                    <button 
+                      onClick={() => {
+                        if (onTogglePinChat) {
+                          onTogglePinChat(chat.id);
+                        }
+                        setIsMenuOpen(false);
+                      }}
+                      className="w-full px-4 py-2.5 hover:bg-gray-50 flex items-center gap-3 text-gray-800 border-t border-gray-100/50"
+                    >
+                      <Pin className={`w-4 h-4 ${chat?.pinned ? 'text-[#008069]' : 'text-gray-450'} rotate-45 transform`} />
+                      <span>{chat?.pinned ? 'בטל נעצה' : 'נעץ שיחה'}</span>
                     </button>
                     <div className="h-px bg-gray-100 my-1" />
                     {showDeleteConfirm ? (

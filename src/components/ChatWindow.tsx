@@ -61,7 +61,15 @@ export default function ChatWindow({
   const [showSearchInChat, setShowSearchInChat] = useState(false);
   const [chatSearchQuery, setChatSearchQuery] = useState('');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [voicePlayingId, setVoicePlayingId] = useState<string | null>(null);
+
+  // Auto reset delete confirmation when header menu is toggled off
+  useEffect(() => {
+    if (!isMenuOpen) {
+      setShowDeleteConfirm(false);
+    }
+  }, [isMenuOpen]);
   const [voiceProgress, setVoiceProgress] = useState(0);
   const [isNoaProcessing, setIsNoaProcessing] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -325,9 +333,39 @@ export default function ChatWindow({
                       <Info className="w-4 h-4 text-gray-400" /> פרטי איש קשר
                     </button>
                     <div className="h-px bg-gray-100 my-1" />
-                    <button onClick={() => { if(window.confirm('למחוק את השיחה?')) onDeleteChat(chat.id); setIsMenuOpen(false); }} className="w-full px-4 py-2.5 hover:bg-red-50 flex items-center gap-3 text-red-500 font-medium">
-                      <X className="w-4 h-4" /> מחק שיחה
-                    </button>
+                    {showDeleteConfirm ? (
+                      <div className="flex items-center justify-between px-4 py-2.5 bg-red-50/70 text-xs animation-fade-in select-none">
+                        <span className="text-red-600 font-medium">בטוח?</span>
+                        <div className="flex gap-1.5">
+                          <button
+                            onClick={() => {
+                              onDeleteChat(chat.id);
+                              setShowDeleteConfirm(false);
+                              setIsMenuOpen(false);
+                            }}
+                            className="bg-red-500 font-bold text-white px-2 py-0.5 rounded cursor-pointer hover:bg-red-600 transition-colors border-0"
+                          >
+                            מחק
+                          </button>
+                          <button
+                            onClick={() => setShowDeleteConfirm(false)}
+                            className="bg-gray-200 font-medium text-gray-700 px-2 py-0.5 rounded cursor-pointer hover:bg-gray-300 transition-colors border-0"
+                          >
+                            ביטול
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowDeleteConfirm(true);
+                        }} 
+                        className="w-full px-4 py-2.5 hover:bg-red-50 flex items-center gap-3 text-red-500 font-medium text-right border-0 bg-transparent cursor-pointer"
+                      >
+                        <X className="w-4 h-4" /> מחק שיחה
+                      </button>
+                    )}
                   </div>
                 </>
               )}

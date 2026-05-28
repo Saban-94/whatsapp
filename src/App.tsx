@@ -7,6 +7,7 @@ import StatusViewer from './components/StatusViewer';
 import { ProfileDrawer, NewChatDrawer, SettingsDrawer } from './components/Drawers';
 import { motion, AnimatePresence } from 'motion/react';
 import AdminPanel from './components/AdminPanel';
+import { sendJoniMessage } from './lib/firebase';
 
 export default function App() {
   const [chats, setChats] = useState<Chat[]>(() => {
@@ -102,6 +103,17 @@ export default function App() {
       mediaUrl,
       mediaDuration: mediaType === 'voice' ? '0:06' : undefined
     };
+
+    // Find current targeted chat to check for real phone numbers mapped for JONI integration
+    const targetedChat = chats.find(c => c.id === chatId);
+    if (targetedChat && targetedChat.phoneNumber) {
+      console.log(`JONI: Dispatching message to Firebase queue for phone ${targetedChat.phoneNumber}...`);
+      sendJoniMessage(targetedChat.phoneNumber, text, mediaType, mediaUrl).then((result) => {
+        console.log("JONI message dispatch finished success:", result);
+      }).catch(err => {
+        console.error("JONI message dispatch caught error:", err);
+      });
+    }
 
     // 1. Append the outgoing message
     setChats(prevChats => {

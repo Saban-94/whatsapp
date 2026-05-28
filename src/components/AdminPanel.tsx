@@ -37,6 +37,7 @@ export default function AdminPanel({ isOpen, onClose, chats, onImportContact, on
   const [usersSearchTerm, setUsersSearchTerm] = useState('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [importSuccess, setImportSuccess] = useState<string | null>(null);
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
 
   // Monitor Auth State for the admin
   useEffect(() => {
@@ -247,17 +248,35 @@ export default function AdminPanel({ isOpen, onClose, chats, onImportContact, on
                         מזהה: {user.id}
                       </span>
                       {user.id !== '1' ? (
-                        <button
-                          onClick={() => {
-                            if (window.confirm(`האם למחוק לצמיתות את שיחת המשתמש "${user.name}" ואת היסטוריית ההודעות?`)) {
-                              onDeleteChat(user.id);
-                            }
-                          }}
-                          className="p-1.5 rounded-lg border border-red-100 hover:bg-red-50 text-red-500 cursor-pointer active:scale-90 transition-transform"
-                          title="מחק שיחה"
-                        >
-                          <Trash className="w-3.5 h-3.5" />
-                        </button>
+                        deletingUserId === user.id ? (
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => {
+                                onDeleteChat(user.id);
+                                setDeletingUserId(null);
+                              }}
+                              className="text-[10px] bg-red-500 hover:bg-red-600 font-bold text-white px-2 py-1 rounded-lg cursor-pointer transition-colors border-0"
+                              title="אשר מחיקה"
+                            >
+                              מחק
+                            </button>
+                            <button
+                              onClick={() => setDeletingUserId(null)}
+                              className="text-[10px] bg-gray-200 hover:bg-gray-300 font-medium text-gray-700 px-2 py-1 rounded-lg cursor-pointer transition-colors border-0"
+                              title="בטל"
+                            >
+                              בטל
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setDeletingUserId(user.id)}
+                            className="p-1.5 rounded-lg border border-red-100 hover:bg-red-50 text-red-500 cursor-pointer active:scale-90 transition-transform"
+                            title="מחק שיחה"
+                          >
+                            <Trash className="w-3.5 h-3.5" />
+                          </button>
+                        )
                       ) : (
                         <span className="text-[10px] text-green-600 font-medium bg-green-50 px-2 py-0.5 rounded-full">
                           קבוע (AI)

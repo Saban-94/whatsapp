@@ -48,7 +48,7 @@ export const MessageBubble = React.memo(({
         {msg.mediaType === 'image' && (
           <div className="rounded-xl overflow-hidden mb-2 max-h-[250px] relative group/img">
             {/* Referrer policy parameter is included for secure asset fetching */}
-            <img src={msg.mediaUrl} alt="Attachment" className="w-full h-full object-cover rounded-xl" referrerPolicy="no-referrer" />
+            <img src={msg.mediaUrl || undefined} alt="Attachment" className="w-full h-full object-cover rounded-xl" referrerPolicy="no-referrer" />
             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 flex items-center justify-center transition-opacity">
               <button 
                 onClick={() => handleDownloadFile(msg.mediaUrl, msg.text)}

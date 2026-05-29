@@ -77,7 +77,7 @@ export default function Sidebar({
         {/* Contact Avatar */}
         <div className="relative shrink-0">
           <img 
-            src={chat.avatar} 
+            src={chat.avatar || undefined} 
             alt={chat.name} 
             className="w-12 h-12 rounded-full object-cover"
             referrerPolicy="no-referrer"
@@ -155,7 +155,7 @@ export default function Sidebar({
           title="הפרופיל שלי"
         >
           <img 
-            src={currentUser.avatar} 
+            src={currentUser.avatar || undefined} 
             alt={currentUser.name} 
             className="w-10 h-10 rounded-full object-cover border border-gray-300 group-hover:opacity-90 transition-opacity"
             referrerPolicy="no-referrer"

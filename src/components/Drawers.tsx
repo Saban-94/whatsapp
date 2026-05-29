@@ -185,7 +185,7 @@ export function ProfileDrawer({ onClose, profile, onUpdateProfile, dir }: Profil
             className="relative group w-[150px] h-[150px] cursor-pointer rounded-full overflow-hidden shadow-sm border border-gray-300 bg-gray-100"
           >
             <img 
-              src={profile.avatar} 
+              src={profile.avatar || undefined} 
               alt={profile.name} 
               className={`w-full h-full object-cover transition-all duration-300 ${isUploading ? 'brightness-50' : 'group-hover:brightness-50'}`}
               referrerPolicy="no-referrer"
@@ -306,10 +306,10 @@ export function NewChatDrawer({ onClose, onSelectChat, chats, onAddNewContact, d
     
     // Choose a random cool avatar if none provided
     const defaultAvatars = [
-      'https://i.postimg.cc/J7F9n0c6/Gemini-Generated-Image-9or8fm9or8fm9or8.png',
-      'https://i.postimg.cc/J7F9n0c6/Gemini-Generated-Image-9or8fm9or8fm9or8.png',
-      'https://i.postimg.cc/J7F9n0c6/Gemini-Generated-Image-9or8fm9or8fm9or8.png',
-      'https://i.postimg.cc/J7F9n0c6/Gemini-Generated-Image-9or8fm9or8fm9or8.png'
+      'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&h=150&q=80',
+      'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&w=150&h=150&q=80',
+      'https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?auto=format&fit=crop&w=150&h=150&q=80',
+      'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=150&h=150&q=80'
     ];
     const avatarUrl = newContactAvatar.trim() || defaultAvatars[Math.floor(Math.random() * defaultAvatars.length)];
     
@@ -404,7 +404,7 @@ export function NewChatDrawer({ onClose, onSelectChat, chats, onAddNewContact, d
           >
             <div className="relative">
               <img 
-                src={chat.avatar} 
+                src={chat.avatar || undefined} 
                 alt={chat.name} 
                 className="w-11 h-11 rounded-full object-cover"
                 referrerPolicy="no-referrer"

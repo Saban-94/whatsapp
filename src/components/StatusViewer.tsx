@@ -85,7 +85,7 @@ export default function StatusViewer({ stories, onClose, onMarkAsViewed, dir }: 
         <div className="flex items-center justify-between w-full px-2">
           <div className="flex items-center gap-3">
             <img 
-              src={currentStory.userAvatar} 
+              src={currentStory.userAvatar || undefined} 
               alt={currentStory.userName} 
               className="w-10 h-10 rounded-full object-cover border border-white/20"
               referrerPolicy="no-referrer"
@@ -145,7 +145,7 @@ export default function StatusViewer({ stories, onClose, onMarkAsViewed, dir }: 
           <AnimatePresence mode="wait">
             <motion.img
               key={currentStory.id}
-              src={currentStory.mediaUrl}
+              src={currentStory.mediaUrl || undefined}
               alt="Story Content"
               className="w-full h-full object-contain pointer-events-none"
               initial={{ opacity: 0, scale: 0.95 }}

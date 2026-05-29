@@ -1,9 +1,20 @@
 export async function POST(request: Request) {
   try {
+    const scriptUrl = process.env.NEXT_PUBLIC_GAS_URL;
+    if (!scriptUrl) {
+      return new Response(JSON.stringify({ error: 'Missing NEXT_PUBLIC_GAS_URL environment variable' }), {
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+        },
+      });
+    }
+
     const body = await request.json();
     
     // Server-to-server forwarding to completely bypass CORS in client browsers
-    const response = await fetch('https://ais-dev-gmxanj4odykr7oiafjb2k2-252744991733.europe-west3.run.app/api/google-apps-script', {
+    const response = await fetch(scriptUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

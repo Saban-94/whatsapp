@@ -343,7 +343,7 @@ export default function ChatWindow({
               onClick={() => { setShowDetailsPanel(!showDetailsPanel); setShowSearchInChat(false); }}
               className="relative cursor-pointer flex items-center gap-3 active:opacity-50 transition-opacity"
             >
-              <img src={chat.avatar} alt={chat.name} className="w-10 h-10 rounded-full object-cover shadow-sm" />
+              <img src={chat.avatar || undefined} alt={chat.name} className="w-10 h-10 rounded-full object-cover shadow-sm" />
               <div className="text-right">
                 <span className="font-semibold text-[15px] text-gray-900 block leading-tight">{chat.name}</span>
                 <span className={`text-[12px] block mt-0.5 ${chat.isTyping ? 'text-[#007AFF] font-medium' : 'text-gray-500'}`}>
@@ -588,7 +588,7 @@ export default function ChatWindow({
               {/* Profile Card */}
               <div className="flex flex-col items-center justify-center py-6 px-4 bg-white shadow-xs border-b border-gray-100">
                 <img 
-                  src={chat.avatar} 
+                  src={chat.avatar || undefined} 
                   alt={chat.name} 
                   className="w-[110px] h-[110px] rounded-full object-cover shadow-sm border border-gray-150 mb-3"
                   referrerPolicy="no-referrer"
@@ -671,7 +671,7 @@ export default function ChatWindow({
                           title="לחץ להורדה מיידית"
                         >
                           <img 
-                            src={msg.mediaUrl} 
+                            src={msg.mediaUrl || undefined} 
                             alt={msg.text} 
                             className="w-full h-full object-cover group-hover/item:scale-105 transition-transform duration-250" 
                           />
@@ -719,7 +719,7 @@ export default function ChatWindow({
               {/* Encryption Notice */}
               <div className="p-5 select-none text-center bg-gray-50/40 text-[11px] text-[#667781] leading-relaxed flex flex-col items-center justify-center gap-2">
                 <Lock className="w-4 h-4 text-[#008069]" />
-                <span>ההודעות והשיחות מוצפנות מקצה לקצה בצורה מלאה דרך Office.</span>
+                <span>ההודעות והשיחות מוצפנות מקצה לקצה בצורה מלאה דרך JONI Smart Office.</span>
               </div>
 
             </div>
@@ -860,7 +860,7 @@ export default function ChatWindow({
                     >
                       <div className="flex items-center gap-3">
                         <img 
-                          src={targetChat.avatar} 
+                          src={targetChat.avatar || undefined} 
                           alt={targetChat.name} 
                           className="w-9 h-9 rounded-full object-cover"
                           referrerPolicy="no-referrer"

@@ -392,8 +392,8 @@ export default function TasksDrawer({ onClose, dir = 'rtl' }: TasksDrawerProps) 
           {/* Linked account card */}
           <div className="bg-white p-3.5 border-b border-gray-150 flex items-center justify-between shrink-0 select-none">
             <div className="flex items-center gap-2.5">
-              {user?.photoURL ? (
-                <img src={user.photoURL} alt={user.displayName || ''} className="w-8 h-8 rounded-full border border-gray-200 shrink-0" referrerPolicy="no-referrer" />
+              {user?.photoURL && user.photoURL !== '' ? (
+                <img src={user.photoURL || undefined} alt={user.displayName || ''} className="w-8 h-8 rounded-full border border-gray-200 shrink-0" referrerPolicy="no-referrer" />
               ) : (
                 <div className="w-8 h-8 bg-blue-100 text-blue-600 font-bold rounded-full flex items-center justify-center shrink-0 text-xs">
                   {user?.displayName?.[0] || 'U'}

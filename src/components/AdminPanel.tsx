@@ -394,7 +394,7 @@ export default function AdminPanel({ isOpen, onClose, chats, onImportContact, on
                       <div className="flex items-center gap-3 text-right">
                         <div className="relative">
                           <img 
-                            src={user.avatar} 
+                            src={user.avatar || undefined} 
                             alt={user.name} 
                             className="w-10 h-10 rounded-full object-cover border border-gray-100"
                             referrerPolicy="no-referrer"
@@ -604,7 +604,7 @@ export default function AdminPanel({ isOpen, onClose, chats, onImportContact, on
                         >
                           <div className="flex items-center gap-3 text-right overflow-hidden">
                             <img 
-                              src={contact.avatarUrl} 
+                              src={contact.avatarUrl || undefined} 
                               alt={contact.name} 
                               className="w-11 h-11 rounded-full object-cover border border-gray-100 shrink-0"
                               referrerPolicy="no-referrer"

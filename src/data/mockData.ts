@@ -33,8 +33,8 @@ export const mockStatuses: StatusStory[] = [
   {
     id: 's1',
     userName: 'נועה - מנהלת סידור AI 🌿',
-    userAvatar: 'https://i.postimg.cc/J7F9n0c6/Gemini-Generated-Image-9or8fm9or8fm9or8.png',
-    mediaUrl: 'https://i.postimg.cc/J7F9n0c6/Gemini-Generated-Image-9or8fm9or8fm9or8.png',
+    userAvatar: 'https://i.postimg.cc/5tfMWt8m/Designer.png',
+    mediaUrl: 'https://i.postimg.cc/5tfMWt8m/Designer.png',
     mediaType: 'image',
     timestamp: 'היום, 09:15',
     viewed: false,

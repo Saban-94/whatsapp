@@ -62,6 +62,258 @@ const FALLBACK_DRIVERS = [
   { id: 'driver_shimon', name: 'שמעון נהג חיצוני' }
 ];
 
+interface OrderCardProps {
+  order: Order;
+  updatingId: string | null;
+  drivers: Driver[];
+  handleUpdateDriver: (orderId: string, driverId: string) => void | Promise<void>;
+  handleUpdateStatus: (orderId: string, status: string) => void | Promise<void>;
+  getDriverName: (id: string) => string;
+  getStatusColors: (status: string) => { bg: string; text: string; border: string; badge: string };
+  getStatusLabel: (status: string) => string;
+}
+
+function OrderCardComponent({
+  order,
+  updatingId,
+  drivers,
+  handleUpdateDriver,
+  handleUpdateStatus,
+  getDriverName,
+  getStatusColors,
+  getStatusLabel
+}: any) {
+  const [animateTrigger, setAnimateTrigger] = useState(false);
+  const [prevStatus, setPrevStatus] = useState(order.status);
+
+  useEffect(() => {
+    if (order.status !== prevStatus) {
+      setAnimateTrigger(true);
+      setPrevStatus(order.status);
+      const timer = setTimeout(() => {
+        setAnimateTrigger(false);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [order.status, prevStatus]);
+
+  const colors = getStatusColors(order.status);
+  const isItemUpdating = updatingId === order.id;
+
+  return (
+    <motion.div
+      layout
+      key={order.id}
+      id={`order-card-${order.id}`}
+      initial={{ opacity: 0, y: 15 }}
+      style={{ perspective: 1200 }}
+      animate={animateTrigger ? {
+        scale: [1, 1.05, 1.05, 1],
+        rotateX: [0, -15, 15, 0],
+        rotateY: [0, 10, -10, 0],
+        boxShadow: [
+          "0 1px 3px 0 rgba(0,0,0,0.1), 0 1px 2px 0 rgba(0,0,0,0.06)",
+          "0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+          "0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+          "0 1px 3px 0 rgba(0,0,0,0.1), 0 1px 2px 0 rgba(0,0,0,0.06)"
+        ],
+        zIndex: 20
+      } : {
+        opacity: 1,
+        y: 0,
+        scale: 1,
+        rotateX: 0,
+        rotateY: 0,
+        boxShadow: "0 1px 3px 0 rgba(0,0,0,0.1), 0 1px 2px 0 rgba(0,0,0,0.06)",
+        zIndex: 1
+      }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      transition={{
+        duration: 0.9,
+        ease: "easeInOut"
+      }}
+      className={`bg-white rounded-2xl border ${colors.border} shadow-sm hover:shadow-lg hover:border-gray-300 transition-shadow duration-300 flex flex-col overflow-hidden relative ${
+        isItemUpdating ? 'opacity-60 pointer-events-none' : ''
+      }`}
+    >
+      {/* Status accent top line */}
+      <div className={`h-1.5 w-full ${
+        order.status === 'pending' ? 'bg-amber-400' :
+        order.status === 'preparing' ? 'bg-blue-400' :
+        order.status === 'ready' ? 'bg-purple-400' :
+        order.status === 'on_the_way' ? 'bg-cyan-400' :
+        order.status === 'delivered' ? 'bg-emerald-400' :
+        'bg-rose-400'
+      }`} />
+
+      {/* Card Content Top Header */}
+      <div className="px-5 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
+        <div className="flex items-center gap-1.5">
+          <span className="font-mono text-sm font-bold text-gray-950 bg-white border border-gray-200 px-2.5 py-1 rounded-lg shadow-2xs">
+            {order.orderNumber ? `#${order.orderNumber}` : 'ללא מס׳'}
+          </span>
+          
+          {order.trackingId && (
+            <span className="text-[10px] font-mono text-gray-400" title="מזהה מעקב שטח">
+              {order.trackingId}
+            </span>
+          )}
+        </div>
+
+        {/* Status pill badge with beautiful border ring */}
+        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ring-1 ring-inset ${colors.badge}`}>
+          {getStatusLabel(order.status)}
+        </span>
+      </div>
+
+      {/* Customer & Destination Details Section */}
+      <div className="p-5 flex-1 flex flex-col gap-4">
+        
+        {/* Customer contact card */}
+        <div className="flex items-start gap-3">
+          <div className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center shrink-0 border border-gray-200 shadow-inner">
+            <User className="w-4.5 h-4.5 text-gray-500" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h4 className="font-bold text-gray-800 text-[14.5px] truncate select-all">
+              {order.customerName}
+            </h4>
+            {order.customerPhone && (
+              <a 
+                href={`tel:${order.customerPhone}`}
+                className="inline-flex items-center gap-1.5 text-xs text-[#00a884] font-medium hover:underline mt-0.5"
+              >
+                <Phone className="w-3 h-3" />
+                <span className="font-mono">{order.customerPhone}</span>
+              </a>
+            )}
+          </div>
+        </div>
+
+        {/* Destination block */}
+        <div className="flex items-start gap-3">
+          <div className="w-8 h-8 rounded-lg bg-red-50 text-red-600 flex items-center justify-center shrink-0 border border-red-100">
+            <MapPin className="w-4 h-4" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <span className="text-[11px] font-semibold text-gray-400 block tracking-tight">כתובת פריקה ויעד</span>
+            <span className="text-xs text-gray-700 font-medium block mt-0.5 truncate select-all" title={order.destination}>
+              {order.destination}
+            </span>
+          </div>
+        </div>
+
+        {/* Items and description lists */}
+        <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 flex-1 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 mb-1.5">
+              <Package className="w-3.5 h-3.5" />
+              <span>פרטי אספקה וציוד</span>
+            </div>
+            <div className="text-xs text-gray-750 font-medium leading-relaxed max-h-24 overflow-y-auto whitespace-pre-wrap">
+              {order.items || '_אין פירוט פריטים להזמנה זו_'}
+            </div>
+          </div>
+
+          {/* Logistics info (Warehouse code) */}
+          <div className="mt-3 pt-2 text-[10.5px] text-gray-400 flex items-center justify-between border-t border-gray-200/50">
+            <span className="flex items-center gap-1">
+              🏢 יציאה מ: <b>{order.warehouse || 'מחסן ראשי'}</b>
+            </span>
+
+            {order.eta && (
+              <span className="flex items-center gap-1 text-emerald-600 font-semibold bg-emerald-50 px-1.5 py-0.5 rounded-md">
+                ⏰ ETA: {order.eta}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Date details */}
+        <div className="flex items-center justify-between text-xs text-gray-500">
+          <span className="flex items-center gap-1 font-mono">
+            <Calendar className="w-3.5 h-3.5 text-gray-400" />
+            {order.date || 'היום'}
+          </span>
+          
+          <span className="flex items-center gap-1 font-mono">
+            <Clock className="w-3.5 h-3.5 text-gray-400" />
+            {order.time || 'עסקים רגיל'}
+          </span>
+        </div>
+      </div>
+
+      {/* Real-time Interaction Actions panel */}
+      <div className="px-5 py-4 border-t border-gray-100 bg-[#fbfcfd] flex flex-col gap-3">
+        
+        {/* Driver assign selection */}
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[11px] font-bold text-gray-500 flex items-center gap-1">
+            <Truck className="w-3.5 h-3.5 text-[#00a884]" />
+            נהג משובץ בסידור:
+          </label>
+          <select
+            value={order.driverId || ''}
+            onChange={(e) => handleUpdateDriver(order.id, e.target.value)}
+            className="w-full text-xs bg-white text-gray-800 border border-gray-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#00a884] focus:border-[#00a884] font-medium"
+          >
+            <option value="">-- טרם שובץ (לא משויך) --</option>
+            {/* Render dynamic drivers if exists */}
+            {drivers.length > 0 ? (
+              drivers.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name} {d.phone ? `(${d.phone})` : ''}
+                </option>
+              ))
+            ) : (
+              // Render fallbacks if none loaded
+              FALLBACK_DRIVERS.map((f) => (
+                <option key={f.id} value={f.name}>
+                  {f.name}
+                </option>
+              ))
+            )}
+          </select>
+        </div>
+
+        {/* Status changing dropdown */}
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[11px] font-bold text-gray-500 flex items-center gap-1">
+            <Layers className="w-3.5 h-3.5 text-gray-400" />
+            עדכון סטטוס התקדמות:
+          </label>
+          <select
+            value={order.status || 'pending'}
+            onChange={(e) => handleUpdateStatus(order.id, e.target.value)}
+            className={`w-full text-xs font-semibold border rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-opacity-55 cursor-pointer bg-white ${
+              order.status === 'pending' ? 'text-amber-700 border-amber-300 focus:ring-amber-500' :
+              order.status === 'preparing' ? 'text-blue-700 border-blue-300 focus:ring-blue-500' :
+              order.status === 'ready' ? 'text-purple-700 border-purple-300 focus:ring-purple-500' :
+              order.status === 'on_the_way' ? 'text-cyan-700 border-cyan-300 focus:ring-cyan-500' :
+              order.status === 'delivered' ? 'text-emerald-700 border-emerald-300 focus:ring-emerald-500' :
+              'text-rose-700 border-rose-300 focus:ring-rose-500'
+            }`}
+          >
+            <option value="pending" className="text-amber-700 font-medium">⏳ בהמתנה (Pending)</option>
+            <option value="preparing" className="text-blue-700 font-medium">🛠️ בהכנה במחסן (Preparing)</option>
+            <option value="ready" className="text-purple-700 font-medium">📦 מוכן להעמסה (Ready)</option>
+            <option value="on_the_way" className="text-cyan-700 font-medium">🚚 בדרך לשטח (On the way)</option>
+            <option value="delivered" className="text-emerald-700 font-medium">✅ נמסר וסופק (Delivered)</option>
+            <option value="cancelled" className="text-rose-700 font-medium">❌ מבוטל (Cancelled)</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Last updated footer log */}
+      {order.updatedAt && (
+        <div className="px-5 py-2.5 bg-gray-50/70 border-t border-gray-100 text-[10px] text-gray-400 font-mono text-center">
+          עדכון אחרון: {new Date(order.updatedAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', second: '2-digit' })} ({new Date(order.updatedAt).toLocaleDateString('he-IL')})
+        </div>
+      )}
+    </motion.div>
+  );
+}
+
 export default function OrdersBoardTab() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
@@ -529,200 +781,19 @@ export default function OrdersBoardTab() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             <AnimatePresence mode="popLayout">
-              {filteredOrders.map((order) => {
-                const colors = getStatusColors(order.status);
-                const isItemUpdating = updatingId === order.id;
-
-                return (
-                  <motion.div
-                    layout
-                    key={order.id}
-                    id={`order-card-${order.id}`}
-                    initial={{ opacity: 0, y: 15 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    transition={{ type: 'spring', stiffness: 350, damping: 28 }}
-                    className={`bg-white rounded-2xl border ${colors.border} shadow-sm hover:shadow-lg hover:border-gray-300 transition-all duration-300 flex flex-col overflow-hidden relative ${
-                      isItemUpdating ? 'opacity-60 pointer-events-none' : ''
-                    }`}
-                  >
-                    {/* Status accent top line */}
-                    <div className={`h-1.5 w-full ${
-                      order.status === 'pending' ? 'bg-amber-400' :
-                      order.status === 'preparing' ? 'bg-blue-400' :
-                      order.status === 'ready' ? 'bg-purple-400' :
-                      order.status === 'on_the_way' ? 'bg-cyan-400' :
-                      order.status === 'delivered' ? 'bg-emerald-400' :
-                      'bg-rose-400'
-                    }`} />
-
-                    {/* Card Content Top Header */}
-                    <div className="px-5 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-mono text-sm font-bold text-gray-950 bg-white border border-gray-200 px-2.5 py-1 rounded-lg shadow-2xs">
-                          {order.orderNumber ? `#${order.orderNumber}` : 'ללא מס׳'}
-                        </span>
-                        
-                        {order.trackingId && (
-                          <span className="text-[10px] font-mono text-gray-400" title="מזהה מעקב שטח">
-                            {order.trackingId}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Status pill badge with beautiful border ring */}
-                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ring-1 ring-inset ${colors.badge}`}>
-                        {getStatusLabel(order.status)}
-                      </span>
-                    </div>
-
-                    {/* Customer & Destination Details Section */}
-                    <div className="p-5 flex-1 flex flex-col gap-4">
-                      
-                      {/* Customer contact card */}
-                      <div className="flex items-start gap-3">
-                        <div className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center shrink-0 border border-gray-200 shadow-inner">
-                          <User className="w-4.5 h-4.5 text-gray-500" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-bold text-gray-800 text-[14.5px] truncate select-all">
-                            {order.customerName}
-                          </h4>
-                          {order.customerPhone && (
-                            <a 
-                              href={`tel:${order.customerPhone}`}
-                              className="inline-flex items-center gap-1.5 text-xs text-[#00a884] font-medium hover:underline mt-0.5"
-                            >
-                              <Phone className="w-3 h-3" />
-                              <span className="font-mono">{order.customerPhone}</span>
-                            </a>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Destination block */}
-                      <div className="flex items-start gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-red-50 text-red-600 flex items-center justify-center shrink-0 border border-red-100">
-                          <MapPin className="w-4 h-4" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <span className="text-[11px] font-semibold text-gray-400 block tracking-tight">כתובת פריקה ויעד</span>
-                          <span className="text-xs text-gray-700 font-medium block mt-0.5 truncate select-all" title={order.destination}>
-                            {order.destination}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Items and description lists */}
-                      <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 flex-1 flex flex-col justify-between">
-                        <div>
-                          <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 mb-1.5">
-                            <Package className="w-3.5 h-3.5" />
-                            <span>פרטי אספקה וציוד</span>
-                          </div>
-                          <div className="text-xs text-gray-750 font-medium leading-relaxed max-h-24 overflow-y-auto whitespace-pre-wrap">
-                            {order.items || '_אין פירוט פריטים להזמנה זו_'}
-                          </div>
-                        </div>
-
-                        {/* Logistics info (Warehouse code) */}
-                        <div className="mt-3 pt-2 text-[10.5px] text-gray-400 flex items-center justify-between border-t border-gray-200/50">
-                          <span className="flex items-center gap-1">
-                            🏢 יציאה מ: <b>{order.warehouse || 'מחסן ראשי'}</b>
-                          </span>
-
-                          {order.eta && (
-                            <span className="flex items-center gap-1 text-emerald-600 font-semibold bg-emerald-50 px-1.5 py-0.5 rounded-md">
-                              ⏰ ETA: {order.eta}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Date details */}
-                      <div className="flex items-center justify-between text-xs text-gray-500">
-                        <span className="flex items-center gap-1 font-mono">
-                          <Calendar className="w-3.5 h-3.5 text-gray-400" />
-                          {order.date || 'היום'}
-                        </span>
-                        
-                        <span className="flex items-center gap-1 font-mono">
-                          <Clock className="w-3.5 h-3.5 text-gray-400" />
-                          {order.time || 'עסקים רגיל'}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Real-time Interaction Actions panel */}
-                    <div className="px-5 py-4 border-t border-gray-100 bg-[#fbfcfd] flex flex-col gap-3">
-                      
-                      {/* Driver assign selection */}
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-[11px] font-bold text-gray-500 flex items-center gap-1">
-                          <Truck className="w-3.5 h-3.5 text-[#00a884]" />
-                          נהג משובץ בסידור:
-                        </label>
-                        <select
-                          value={order.driverId || ''}
-                          onChange={(e) => handleUpdateDriver(order.id, e.target.value)}
-                          className="w-full text-xs bg-white text-gray-800 border border-gray-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#00a884] focus:border-[#00a884] font-medium"
-                        >
-                          <option value="">-- טרם שובץ (לא משויך) --</option>
-                          {/* Render dynamic drivers if exists */}
-                          {drivers.length > 0 ? (
-                            drivers.map((d) => (
-                              <option key={d.id} value={d.id}>
-                                {d.name} {d.phone ? `(${d.phone})` : ''}
-                              </option>
-                            ))
-                          ) : (
-                            // Render fallbacks if none loaded
-                            FALLBACK_DRIVERS.map((f) => (
-                              <option key={f.id} value={f.name}>
-                                {f.name}
-                              </option>
-                            ))
-                          )}
-                        </select>
-                      </div>
-
-                      {/* Status changing dropdown */}
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-[11px] font-bold text-gray-500 flex items-center gap-1">
-                          <Layers className="w-3.5 h-3.5 text-gray-400" />
-                          עדכון סטטוס התקדמות:
-                        </label>
-                        <select
-                          value={order.status || 'pending'}
-                          onChange={(e) => handleUpdateStatus(order.id, e.target.value)}
-                          className={`w-full text-xs font-semibold border rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-opacity-55 cursor-pointer bg-white ${
-                            order.status === 'pending' ? 'text-amber-700 border-amber-300 focus:ring-amber-500' :
-                            order.status === 'preparing' ? 'text-blue-700 border-blue-300 focus:ring-blue-500' :
-                            order.status === 'ready' ? 'text-purple-700 border-purple-300 focus:ring-purple-500' :
-                            order.status === 'on_the_way' ? 'text-cyan-700 border-cyan-300 focus:ring-cyan-500' :
-                            order.status === 'delivered' ? 'text-emerald-700 border-emerald-300 focus:ring-emerald-500' :
-                            'text-rose-700 border-rose-300 focus:ring-rose-500'
-                          }`}
-                        >
-                          <option value="pending" className="text-amber-700 font-medium">⏳ בהמתנה (Pending)</option>
-                          <option value="preparing" className="text-blue-700 font-medium">🛠️ בהכנה במחסן (Preparing)</option>
-                          <option value="ready" className="text-purple-700 font-medium">📦 מוכן להעמסה (Ready)</option>
-                          <option value="on_the_way" className="text-cyan-700 font-medium">🚚 בדרך לשטח (On the way)</option>
-                          <option value="delivered" className="text-emerald-700 font-medium">✅ נמסר וסופק (Delivered)</option>
-                          <option value="cancelled" className="text-rose-700 font-medium">❌ מבוטל (Cancelled)</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    {/* Last updated footer log */}
-                    {order.updatedAt && (
-                      <div className="px-5 py-2.5 bg-gray-50/70 border-t border-gray-100 text-[10px] text-gray-400 font-mono text-center">
-                        עדכון אחרון: {new Date(order.updatedAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', second: '2-digit' })} ({new Date(order.updatedAt).toLocaleDateString('he-IL')})
-                      </div>
-                    )}
-                  </motion.div>
-                );
-              })}
+              {filteredOrders.map((order) => (
+                <OrderCardComponent
+                  key={order.id}
+                  order={order}
+                  updatingId={updatingId}
+                  drivers={drivers}
+                  handleUpdateDriver={handleUpdateDriver}
+                  handleUpdateStatus={handleUpdateStatus}
+                  getDriverName={getDriverName}
+                  getStatusColors={getStatusColors}
+                  getStatusLabel={getStatusLabel}
+                />
+              ))}
             </AnimatePresence>
           </div>
         )}

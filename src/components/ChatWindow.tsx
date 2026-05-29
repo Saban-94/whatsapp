@@ -719,7 +719,7 @@ export default function ChatWindow({
               {/* Encryption Notice */}
               <div className="p-5 select-none text-center bg-gray-50/40 text-[11px] text-[#667781] leading-relaxed flex flex-col items-center justify-center gap-2">
                 <Lock className="w-4 h-4 text-[#008069]" />
-                <span>ההודעות והשיחות מוצפנות מקצה לקצה בצורה מלאה דרך JONI Smart Office.</span>
+                <span>ההודעות והשיחות מוצפנות מקצה לקצה בצורה מלאה דרך Office.</span>
               </div>
 
             </div>

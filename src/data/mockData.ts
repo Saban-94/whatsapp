@@ -11,7 +11,7 @@ export const initialChats: Chat[] = [
   {
     id: '1',
     name: 'נועה - מנהלת משרד AI 🌿',
-    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&h=150&q=80',
+    avatar: 'https://i.postimg.cc/J7F9n0c6/Gemini-Generated-Image-9or8fm9or8fm9or8.png',
     statusText: 'מחובר/ת',
     isOnline: true,
     unreadCount: 0,

@@ -4,9 +4,7 @@ import { getAuth, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { getStorage } from "firebase/storage";
 import { getDatabase, ref, push, set } from "firebase/database";
 import firebaseConfig from "../../firebase-applet-config.json";
-// חיבור ישיר ומפורש למאגר הלוגיסטי האמיתי (דורס את ברירת המחדל)
-const DB_ID = "ai-studio-cc5d2687-b402-4b97-b808-5ba700689e0e";
-export const db = getFirestore(app, DB_ID);
+
 export enum OperationType {
   CREATE = 'create',
   UPDATE = 'update',
@@ -36,8 +34,8 @@ export interface FirestoreErrorInfo {
 // מניעת שגיאות אתחול כפול בטעינה חמה
 export const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
-// חיבור למאגרים הספציפיים (CRITICAL: DB initialization uses databaseId from config if provided)
-export const db = getFirestore(app, (firebaseConfig as any).firestoreDatabaseId || "(default)");
+const DB_ID = "ai-studio-cc5d2687-b402-4b97-b808-5ba700689e0e";
+export const db = getFirestore(app, DB_ID);
 export const rtdb = getDatabase(app);
 export const auth = getAuth(app);
 export const storage = getStorage(app);

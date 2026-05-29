@@ -346,8 +346,10 @@ export default function ChatWindow({
               <img src={chat.avatar || undefined} alt={chat.name} className="w-10 h-10 rounded-full object-cover shadow-sm" />
               <div className="text-right">
                 <span className="font-semibold text-[15px] text-gray-900 block leading-tight">{chat.name}</span>
-                <span className={`text-[12px] block mt-0.5 ${chat.isTyping ? 'text-[#007AFF] font-medium' : 'text-gray-500'}`}>
-                  {chat.isTyping ? 'מקליד/ה...' : chat.statusText}
+                <span className={`text-[12px] block mt-0.5 ${chat.isTyping ? 'text-[#007AFF] font-medium animate-pulse' : 'text-gray-500'}`}>
+                  {chat.isTyping 
+                    ? (chat.isGroup && chat.typingUser ? `User ${chat.typingUser} is typing...` : 'מקליד/ה...') 
+                    : chat.statusText}
                 </span>
               </div>
             </div>

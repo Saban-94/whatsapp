@@ -289,8 +289,16 @@ export default function App() {
       mediaDuration: mediaType === 'voice' ? '0:06' : undefined
     };
 
-    // Find current targeted chat to check for real phone numbers mapped for JONI integration
+    // Find current targeted chat to check for real phone numbers mapped for JONI integration or if it's a group chat
     const targetedChat = chats.find(c => c.id === chatId);
+    const isGroupChat = targetedChat ? !!targetedChat.isGroup : false;
+    
+    // Choose a random member for the group keying if it's a group chat
+    const groupMembers = ['רועי', 'דודו', 'שירה', 'אבא'];
+    const chosenGroupMember = isGroupChat 
+      ? groupMembers[Math.floor(Math.random() * groupMembers.length)]
+      : undefined;
+
     if (targetedChat && targetedChat.phoneNumber) {
       console.log(`JONI: Dispatching message to Firebase queue for phone ${targetedChat.phoneNumber}...`);
       sendJoniMessage(targetedChat.phoneNumber, text, mediaType, mediaUrl).then((result) => {
@@ -352,7 +360,8 @@ export default function App() {
             ...c,
             isOnline: true,
             isTyping: true,
-            statusText: 'הקלדה...'
+            typingUser: chosenGroupMember,
+            statusText: isGroupChat ? `${chosenGroupMember} is typing...` : 'הקלדה...'
           };
         }
         return c;
@@ -384,9 +393,7 @@ export default function App() {
           replyText = 'סבבה לגמרי, אעדכן אותך מיד כשזה יועבר לבדיקה של מנהל המוצר.';
         }
       } else if (replyingChat.isGroup) {
-        const members = ['רועי', 'דודו', 'שירה', 'אבא'];
-        const randomMember = members[Math.floor(Math.random() * members.length)];
-        replyText = `${randomMember}: סגרנו לגמרי! כולנו מגיעים מחר בערב.`;
+        replyText = `${chosenGroupMember || 'חבר קבוצה'}: סגרנו לגמרי! כולנו מגיעים מחר בערב.`;
       } else if (replyingChat.name.includes('לקוחות') || replyingChat.name.includes('סיבוס')) {
         replyText = 'שירות לקוחות אוטומטי: תודה על פנייתך. נציג אנושי יענה בהקדם.';
       } else {
@@ -418,6 +425,7 @@ export default function App() {
             return {
               ...chat,
               isTyping: false,
+              typingUser: undefined,
               statusText: originalStatus,
               messages: [...chat.messages, botMessage],
               unreadCount: activeChatId === chatId ? 0 : chat.unreadCount + 1

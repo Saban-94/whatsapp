@@ -104,7 +104,9 @@ export default function Sidebar({
             <div className="text-xs truncate w-[85%] text-right flex items-center gap-1">
               {/* If user is active typing */}
               {chat.isTyping ? (
-                <span className="text-[#00a884] font-medium animate-pulse select-none">מקליד/ה...</span>
+                <span className="text-[#00a884] font-medium animate-pulse select-none">
+                  {chat.isGroup && chat.typingUser ? `User ${chat.typingUser} is typing...` : 'מקליד/ה...'}
+                </span>
               ) : (
                 <>
                   {/* Status doubleTicks if outgoing last message */}

@@ -16,6 +16,7 @@ export interface Chat {
   statusText: string; // e.g., "online" or "קליק הקלדה..." or "נראה לאחרונה ב-..."
   isOnline: boolean;
   isTyping?: boolean;
+  typingUser?: string;
   messages: Message[];
   unreadCount: number;
   pinned?: boolean;

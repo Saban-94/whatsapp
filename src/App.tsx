@@ -8,7 +8,8 @@ import { ProfileDrawer, NewChatDrawer, SettingsDrawer } from './components/Drawe
 import TasksDrawer from './components/TasksDrawer';
 import { motion, AnimatePresence } from 'motion/react';
 import AdminPanel from './components/AdminPanel';
-import { sendJoniMessage } from './lib/firebase';
+import { sendJoniMessage, db } from './lib/firebase';
+import { doc, setDoc } from 'firebase/firestore';
 import { saveUserLocally } from './lib/storageUtils';
 
 export default function App() {
@@ -31,6 +32,110 @@ export default function App() {
   const [sidebarSearchTerm, setSidebarSearchTerm] = useState('');
   const [statusViewerOpen, setStatusViewerOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
+
+  // Helper to sync single chat to the correct Firestore collection (chats / internal_team_chats)
+  const syncChatToFirestore = async (chat: Chat) => {
+    try {
+      const isInternalTeam = chat.isGroup ||
+        chat.name.includes('משרד') ||
+        chat.name.includes('צוות') ||
+        chat.name.includes('הנהלת') ||
+        chat.name.includes('פרויקט') ||
+        ['g1', 'g2', 'g3'].includes(chat.id) ||
+        chat.id.startsWith('imported-team-') ||
+        false;
+
+      const collectionName = isInternalTeam ? 'internal_team_chats' : 'chats';
+      const docRef = doc(db, collectionName, chat.id);
+
+      // Clean undefined or non-serializable fields
+      const messagesClean = chat.messages.map(m => ({
+        id: m.id || '',
+        text: m.text || '',
+        isOutgoing: !!m.isOutgoing,
+        timestamp: m.timestamp || '',
+        status: m.status || 'sent',
+        mediaType: m.mediaType || 'text',
+        mediaUrl: m.mediaUrl || null,
+        mediaDuration: m.mediaDuration || null
+      }));
+
+      await setDoc(docRef, {
+        id: chat.id,
+        name: chat.name,
+        avatar: chat.avatar,
+        statusText: chat.statusText || 'זמין/ה',
+        unreadCount: chat.unreadCount || 0,
+        phoneNumber: chat.phoneNumber || '',
+        description: chat.description || '',
+        isGroup: !!chat.isGroup,
+        isOnline: !!chat.isOnline,
+        isTyping: !!chat.isTyping,
+        pinned: !!chat.pinned,
+        messages: messagesClean,
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+    } catch (err) {
+      console.warn(`Sync warning for chat ${chat.id}:`, err);
+    }
+  };
+
+  // 1. Mount-time load of chats from verified Firestore collections
+  useEffect(() => {
+    const loadChatsFromFirestore = async () => {
+      try {
+        const { getDocs, collection } = await import('firebase/firestore');
+        const [customerSnapshot, teamSnapshot] = await Promise.all([
+          getDocs(collection(db, 'chats')),
+          getDocs(collection(db, 'internal_team_chats'))
+        ]);
+
+        let loadedChatsMap: Record<string, Chat> = {};
+
+        customerSnapshot.forEach(doc => {
+          const d = doc.data();
+          if (d.id) loadedChatsMap[d.id] = d as Chat;
+        });
+
+        teamSnapshot.forEach(doc => {
+          const d = doc.data();
+          if (d.id) loadedChatsMap[d.id] = d as Chat;
+        });
+
+        const loadedChatsList = Object.values(loadedChatsMap);
+
+        if (loadedChatsList.length > 0) {
+          console.log(`Successfully restored ${loadedChatsList.length} chats from Firestore db!`);
+          
+          setChats(prev => {
+            const merged = [...prev];
+            loadedChatsList.forEach(srvChat => {
+              const idx = merged.findIndex(c => c.id === srvChat.id);
+              if (idx !== -1) {
+                merged[idx] = { ...merged[idx], ...srvChat };
+              } else {
+                merged.unshift(srvChat);
+              }
+            });
+            return merged;
+          });
+        }
+      } catch (err) {
+        console.warn('Could not bootstrap load chats from Firestore, utilizing cached localStorage:', err);
+      }
+    };
+
+    loadChatsFromFirestore();
+  }, []);
+
+  // 2. Synchronize any changed chat state to Firestore
+  useEffect(() => {
+    if (chats && chats.length > 0) {
+      chats.forEach(chat => {
+        syncChatToFirestore(chat);
+      });
+    }
+  }, [chats]);
   
   // Drawer slider control
   const [activeDrawer, setActiveDrawer] = useState<'profile' | 'newChat' | 'settings' | 'tasks' | null>(null);

@@ -34,6 +34,7 @@ import DoodleBackground from './DoodleBackground';
 import { storage } from '../lib/firebase';
 import { Virtuoso } from 'react-virtuoso';
 import { MessageBubble } from './MessageBubble';
+import { useNoaBrain } from '../hooks/useNoaBrain';
 
 // דרישות לממשק הפרופס
 interface ChatWindowProps {
@@ -62,6 +63,7 @@ export default function ChatWindow({
   onTogglePinChat,
 }: ChatWindowProps) {
   const [inputText, setInputText] = useState('');
+  const { getNoaAnalysis } = useNoaBrain();
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [showDetailsPanel, setShowDetailsPanel] = useState(false);
@@ -273,10 +275,10 @@ export default function ChatWindow({
     setIsNoaProcessing(true);
     
     setTimeout(() => {
-      const enhancedText = `*הודעת עדכון - ח. סבן* 🏗️\n\n${inputText}\n\n_לכל שאלה ניתן לפנות למשרד._\nsent via JONI`;
+      const enhancedText = getNoaAnalysis(inputText);
       setInputText(enhancedText);
       setIsNoaProcessing(false);
-    }, 1500);
+    }, 1200);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {

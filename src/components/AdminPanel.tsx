@@ -34,7 +34,8 @@ import {
   Cell 
 } from 'recharts';
 import { Chat } from '../types';
-import { auth, loginAndGetAccessToken, logout } from '../lib/firebase';
+import { auth, loginAndGetAccessToken, db, logout } from '../lib/firebase';
+import { doc, setDoc } from 'firebase/firestore';
 import { onAuthStateChanged, User } from 'firebase/auth';
 
 interface AdminPanelProps {
@@ -259,9 +260,25 @@ export default function AdminPanel({ isOpen, onClose, chats, onImportContact, on
     setGoogleContacts([]);
   };
 
-  const executeImport = (contact: { name: string; phone: string; avatarUrl: string }) => {
+  const executeImport = async (contact: { name: string; phone: string; avatarUrl: string }) => {
     try {
       onImportContact(contact.name, contact.phone, contact.avatarUrl);
+      
+      // Save imported contact to 'joni_users' collection in Firestore
+      try {
+        const userRef = doc(db, 'joni_users', contact.phone.replace(/[^\d+]/g, '') || `user_${Date.now()}`);
+        await setDoc(userRef, {
+          name: contact.name,
+          phoneNumber: contact.phone || '',
+          avatar: contact.avatarUrl || '',
+          statusText: 'זמין/ה (מתואם JONI)',
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
+        console.log(`Saved imported contact "${contact.name}" to 'joni_users' in Firestore`);
+      } catch (fErr) {
+        console.warn('Firestore import joni_users save failure:', fErr);
+      }
+
       setImportSuccess(`איש הקשר "${contact.name}" יובא בהצלחה כשיחה פעילה!`);
       setTimeout(() => setImportSuccess(null), 4000);
     } catch (err) {

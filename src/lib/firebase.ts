@@ -108,7 +108,7 @@ export const sendJoniMessage = async (phoneNumber: string, text: string, mediaTy
   }
 
   // 2. כתיבה ל-Firestore (תמיכה בתוסף JONI Firestore)
-  const pathForWrite = "joni_outbox";
+  const pathForWrite = "office_messages";
   try {
     const colRef = collection(db, pathForWrite);
     const docRef = await addDoc(colRef, payload);

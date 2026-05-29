@@ -2,7 +2,7 @@ import { Chat, UserProfile, StatusStory } from '../types';
 
 export const currentUserProfile: UserProfile = {
   name: 'הראל סבן',
-  avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&h=150&q=80',
+  avatar: 'https://i.postimg.cc/DwXbz2Hq/20251215-160105.jpg',
   status: 'מנהל מערכת ח. סבן',
   phoneNumber: '+972 50-123-4567',
 };

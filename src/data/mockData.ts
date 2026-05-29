@@ -11,7 +11,7 @@ export const initialChats: Chat[] = [
   {
     id: '1',
     name: 'נועה - מנהלת משרד AI 🌿',
-    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&h=150&q=80',
+    avatar: 'https://i.postimg.cc/J7F9n0c6/Gemini-Generated-Image-9or8fm9or8fm9or8.png',
     statusText: 'מחובר/ת',
     isOnline: true,
     unreadCount: 0,
@@ -33,7 +33,7 @@ export const mockStatuses: StatusStory[] = [
   {
     id: 's1',
     userName: 'נועה - מנהלת משרד AI 🌿',
-    userAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&h=150&q=80',
+    userAvatar: 'https://i.postimg.cc/J7F9n0c6/Gemini-Generated-Image-9or8fm9or8fm9or8.png',
     mediaUrl: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=800&q=80',
     mediaType: 'image',
     timestamp: 'היום, 09:15',

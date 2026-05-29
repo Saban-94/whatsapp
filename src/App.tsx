@@ -276,12 +276,15 @@ export default function App() {
   }, [activeChatId]);
 
   const handleOpenNoaChat = (order: any) => {
+    if (!order) return;
     // 1. We switch viewMode to 'chat'
     setViewMode('chat');
     // 2. We set activeChatId to '1' (Noa's AI chat window)
     setActiveChatId('1');
-    // 3. Populate prefilled message
-    const msg = `נועה, בנוגע להזמנה #${order.orderNumber} עבור הלקוח ${order.customerName}: `;
+    // 3. Populate prefilled message safely
+    const orderNum = order.orderNumber || 'חדשה';
+    const custName = order.customerName || 'לקוח';
+    const msg = `נועה, בנוגע להזמנה #${orderNum} עבור הלקוח ${custName}: `;
     setPrefilledMessage(msg);
   };
 
@@ -596,8 +599,8 @@ export default function App() {
         {/* Sidebar and Chat Layout wrapper based on Custom direction order preference */}
         <div className={`w-full h-full flex flex-row ${!isMobile && sidebarPosition === 'left' ? 'flex-row-reverse' : ''}`}>
           
-          {/* LEFT/RIGHT CHAT INDEX PANEL - Hidden on mobile if a chat is active */}
-          {(!isMobile || activeChatId === null) && (
+          {/* LEFT/RIGHT CHAT INDEX PANEL - Hidden on mobile if a chat is active or viewing orders */}
+          {(!isMobile || (activeChatId === null && viewMode === 'chat')) && (
             <div className={`${
               isMobile 
                 ? 'w-full h-full' 
@@ -711,7 +714,7 @@ export default function App() {
           {(!isMobile || activeChatId !== null || viewMode === 'orders') && (
             <div className="flex-1 h-full flex flex-col relative bg-[#efeae2]">
               {viewMode === 'orders' ? (
-                <OrdersBoardTab onOpenNoaChat={handleOpenNoaChat} />
+                <OrdersBoardTab onOpenNoaChat={handleOpenNoaChat} onBack={() => setViewMode('chat')} />
               ) : (
                 <ChatWindow 
                   dir="rtl"

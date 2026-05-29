@@ -25,7 +25,8 @@ import {
   TrendingUp, 
   RefreshCw,
   XCircle,
-  AlertTriangle
+  AlertTriangle,
+  ArrowRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -150,7 +151,7 @@ function OrderCardComponent({
       }`} />
 
       {/* Card Content Top Header */}
-      <div className="px-5 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
+      <div className="px-4 md:px-5 py-3 md:py-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
         <div className="flex items-center gap-1.5">
           <span className="font-mono text-sm font-bold text-gray-950 bg-white border border-gray-200 px-2.5 py-1 rounded-lg shadow-2xs">
             {order.orderNumber ? `#${order.orderNumber}` : 'ללא מס׳'}
@@ -171,7 +172,7 @@ function OrderCardComponent({
 
       {/* Customer & Destination Details Section */}
       <div 
-        className="p-5 flex-1 flex flex-col gap-4 cursor-pointer hover:bg-slate-50/45 active:scale-[0.99] transition-all" 
+        className="p-4 md:p-5 flex-1 flex flex-col gap-4 cursor-pointer hover:bg-slate-50/45 active:scale-[0.99] transition-all" 
         onClick={() => onOpenOverlay && onOpenOverlay(order)}
         title="לחץ לצפייה מורחבת ופעולות AI 🌿"
       >
@@ -259,7 +260,7 @@ function OrderCardComponent({
       </div>
 
       {/* Real-time Interaction Actions panel */}
-      <div className="px-5 py-4 border-t border-gray-100 bg-[#fbfcfd] flex flex-col gap-3">
+      <div className="px-4 md:px-5 py-3.5 md:py-4 border-t border-gray-100 bg-[#fbfcfd] flex flex-col gap-3">
         
         {/* Driver assign selection */}
         <div className="flex flex-col gap-1.5">
@@ -329,7 +330,13 @@ function OrderCardComponent({
   );
 }
 
-export default function OrdersBoardTab({ onOpenNoaChat }: { onOpenNoaChat?: (order: Order) => void }) {
+export default function OrdersBoardTab({ 
+  onOpenNoaChat,
+  onBack
+}: { 
+  onOpenNoaChat?: (order: Order) => void;
+  onBack?: () => void;
+}) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loading, setLoading] = useState(true);
@@ -621,16 +628,30 @@ export default function OrdersBoardTab({ onOpenNoaChat }: { onOpenNoaChat?: (ord
       </AnimatePresence>
 
       {/* Header section with branding */}
-      <div className="bg-white border-b border-gray-200 px-6 py-5 shrink-0 shadow-xs">
+      <div className="bg-white border-b border-gray-200 px-4 md:px-6 py-4 md:py-5 shrink-0 shadow-xs">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-3">
-              <span className="p-2.5 bg-green-50 text-[#00a884] rounded-xl font-bold text-lg select-none">🏗️</span>
-              <h1 className="text-xl md:text-2xl font-bold text-gray-900 tracking-tight leading-none">סידור עבודה חי - ח. סבן חומרי בניין</h1>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 w-full md:w-auto">
+            <div>
+              <div className="flex items-center gap-3">
+                <span className="p-2 md:p-2.5 bg-green-50 text-[#00a884] rounded-xl font-bold text-lg select-none">🏗️</span>
+                <h1 className="text-xl md:text-2xl font-bold text-gray-900 tracking-tight leading-none">סידור עבודה חי - ח. סבן חומרי בניין</h1>
+              </div>
+              <p className="text-xs md:text-sm text-gray-500 mt-1.5 font-medium">
+                לוח בקרה מרכזי לשירות לקוחות, שיבוץ נהגים וסטטוס העמסת סחורה בזמן אמת.
+              </p>
             </div>
-            <p className="text-xs md:text-sm text-gray-500 mt-1.5 font-medium">
-              לוח בקרה מרכזי לשירות לקוחות, שיבוץ נהגים וסטטוס העמסת סחורה בזמן אמת.
-            </p>
+
+            {/* Back button on mobile only */}
+            {onBack && (
+              <button
+                onClick={onBack}
+                className="md:hidden flex items-center gap-1.5 px-3.5 py-2.5 bg-[#00a884]/5 hover:bg-[#00a884]/15 text-[#00a884] rounded-xl text-xs font-bold transition-all border border-[#00a884]/10 cursor-pointer self-start sm:self-center"
+                title="חזרה לצ'אטים"
+              >
+                <ArrowRight className="w-4 h-4 text-[#00a884]" />
+                <span>חזרה לשיחות 💬</span>
+              </button>
+            )}
           </div>
 
           <div className="flex items-center gap-2">
@@ -682,7 +703,7 @@ export default function OrdersBoardTab({ onOpenNoaChat }: { onOpenNoaChat?: (ord
       </div>
 
       {/* Filter and search actions bar */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4 shrink-0 flex flex-col md:flex-row gap-4 items-center justify-between">
+      <div className="bg-white border-b border-gray-200 px-4 md:px-6 py-3.5 md:py-4 shrink-0 flex flex-col md:flex-row gap-4 items-center justify-between">
         
         {/* Responsive Search Input */}
         <div className="relative w-full md:w-96">
@@ -799,7 +820,7 @@ export default function OrdersBoardTab({ onOpenNoaChat }: { onOpenNoaChat?: (ord
       </div>
 
       {/* Main Content Pane */}
-      <div className="flex-1 p-6">
+      <div className="flex-1 p-3.5 md:p-6">
         {loading ? (
           <div className="h-64 flex flex-col items-center justify-center text-gray-500">
             <RefreshCw className="w-10 h-10 text-[#00a884] animate-spin mb-4" />

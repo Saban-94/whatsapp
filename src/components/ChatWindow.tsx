@@ -32,6 +32,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Chat, Message, UserProfile } from '../types';
 import DoodleBackground from './DoodleBackground';
 import { storage } from '../lib/firebase';
+import { Virtuoso } from 'react-virtuoso';
+import { MessageBubble } from './MessageBubble';
 
 // דרישות לממשק הפרופס
 interface ChatWindowProps {
@@ -120,13 +122,20 @@ export default function ChatWindow({
     return () => clearInterval(interval);
   }, [voicePlayingId]);
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const chatContainerRef = useRef<HTMLDivElement>(null);
+  const virtuosoRef = useRef<any>(null);
 
-  // גלילה אוטומטית למטה
+  // גלילה אוטומטית למטה בעזרת מנוע ה-Virtuoso
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [chat?.messages, chat?.isTyping]);
+    if (virtuosoRef.current && chat?.messages && chat.messages.length > 0) {
+      setTimeout(() => {
+        virtuosoRef.current?.scrollToIndex({
+          index: chat.messages.length - 1,
+          align: 'end',
+          behavior: 'smooth'
+        });
+      }, 80);
+    }
+  }, [chat?.messages?.length, chat?.isTyping]);
 
   if (!chat) {
     return (
@@ -419,106 +428,46 @@ export default function ChatWindow({
 
         <DoodleBackground />
 
-        {/* Message List */}
-        <div ref={chatContainerRef} className="flex-1 overflow-y-auto px-6 py-4 space-y-2 select-text relative z-1" style={{ backgroundColor: getWallpaperBg() }}>
-          <div className="flex justify-center mb-6 select-none">
-            <div className="bg-[#f2f2f7]/90 text-gray-600 text-[11px] py-1.5 px-4 rounded-full shadow-sm flex items-center gap-1.5 border border-white/50 backdrop-blur-sm">
-              <Lock className="w-3 h-3" />
-              <span>ההודעות מוצפנות ומשותפות אוטומטית דרך JONI</span>
-            </div>
-          </div>
-
-          {chat.messages.length === 0 ? (
+        {/* High performance Virtualized Message List */}
+        {chat.messages.length === 0 ? (
+          <div className="flex-1 flex flex-col items-center justify-center p-8 select-none text-center relative z-1" style={{ backgroundColor: getWallpaperBg() }}>
             <div className="py-20 text-center text-gray-400 text-sm">אין הודעות. התחל להקליד או בקש מנועה לנסח עבורך.</div>
-          ) : (
-            chat.messages.map((msg) => {
-              const isOut = msg.isOutgoing;
-              return (
-                <div key={msg.id} className={`flex ${isOut ? 'justify-start' : 'justify-end'} mb-2`}>
-                  <div className={`max-w-[70%] rounded-2xl px-3.5 py-2 pb-5.5 shadow-sm relative text-right group ${isOut ? 'bg-[#007AFF] text-white rounded-br-sm' : 'bg-white text-gray-900 rounded-bl-sm border border-gray-100'}`}>
-                    
-                    {chat.isGroup && !isOut && (
-                      <div className="text-[11px] font-semibold text-blue-600 mb-1">חבר צוות</div>
-                    )}
-
-                    {msg.mediaType === 'image' && (
-                      <div className="rounded-xl overflow-hidden mb-2 max-h-[250px] relative group/img">
-                        <img src={msg.mediaUrl} alt="Attachment" className="w-full h-full object-cover" />
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 flex items-center justify-center transition-opacity">
-                          <button 
-                            onClick={() => handleDownloadFile(msg.mediaUrl, msg.text)}
-                            className="bg-white/95 text-gray-800 p-2 rounded-full shadow-md hover:bg-white flex items-center justify-center transition-all hover:scale-105 cursor-pointer border-0"
-                            title="הורד קובץ"
-                          >
-                            <Download className="w-4 h-4 text-[#007AFF]" />
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                    {((msg.mediaUrl && msg.mediaType !== 'image' && msg.mediaType !== 'voice') || msg.text.endsWith('.pdf')) ? (
-                      <div className="flex items-center gap-3 bg-black/5 hover:bg-black/10 transition-colors p-2.5 rounded-lg border border-black/10 mb-2 min-w-[210px] text-right">
-                        <div className="w-10 h-10 rounded-md bg-white/80 text-red-500 flex items-center justify-center font-bold text-xs shrink-0 select-none shadow-xs">
-                          <File className="w-5 h-5 text-red-500" />
-                        </div>
-                        <div className="flex-1 text-right min-w-0">
-                          <p className="text-xs font-semibold truncate text-gray-800" title={msg.text}>{msg.text}</p>
-                          <p className="text-[10px] text-gray-400">מסמך מאובטח JONI - ח. סבן</p>
-                        </div>
-                        <button
-                          onClick={() => handleDownloadFile(msg.mediaUrl || 'https://saban-ai-drive.firebasestorage.app/demo.pdf', msg.text)}
-                          className="bg-white text-gray-700 hover:text-[#007AFF] border border-gray-200 p-1.5 rounded-md hover:bg-gray-50 flex items-center justify-center cursor-pointer shrink-0"
-                          title="הורד קובץ"
-                        >
-                          <Download className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ) : msg.mediaType === 'voice' ? (
-                      <div className="flex items-center gap-3 py-1">
-                        <button onClick={() => setVoicePlayingId(voicePlayingId === msg.id ? null : msg.id)} className={`w-9 h-9 rounded-full flex items-center justify-center transition-transform ${isOut ? 'bg-white text-[#007AFF]' : 'bg-[#007AFF] text-white'}`}>
-                          {voicePlayingId === msg.id ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current ml-0.5" />}
-                        </button>
-                        <div className="flex flex-col gap-1">
-                           <div className="flex items-center gap-0.5 w-[120px] px-1 opacity-80">
-                             {Array.from({ length: 15 }).map((_, i) => (
-                               <span key={i} className={`w-1 rounded-full ${voicePlayingId === msg.id && i < (voiceProgress % 15) ? (isOut ? 'bg-blue-200' : 'bg-blue-400') : (isOut ? 'bg-white/40' : 'bg-gray-300')}`} style={{ height: `${Math.max(4, 4 + Math.sin(i * 1.5) * 12)}px` }} />
-                             ))}
-                           </div>
-                           <span className={`text-[10px] font-mono ${isOut ? 'text-blue-100' : 'text-gray-500'}`}>{msg.mediaDuration || '0:12'}</span>
-                        </div>
-                      </div>
-                    ) : (
-                      <p className="text-[15px] leading-relaxed whitespace-pre-wrap pl-10 pt-0.5">{msg.text}</p>
-                    )}
-
-                    <div className="absolute bottom-1.5 left-2.5 flex items-center gap-1.5 select-none opacity-80">
-                      {/* Hover Arrow Forward button */}
-                      <button
-                        onClick={() => {
-                          setMessageToForward(msg);
-                          setForwardSentMap({});
-                          setForwardSearchQuery('');
-                        }}
-                        className="opacity-0 group-hover:opacity-100 transition-all text-gray-500 hover:text-[#007AFF] cursor-pointer p-0.5 rounded-full hover:bg-black/5 flex items-center justify-center bg-transparent border-0"
-                        title="העבר הודעה"
-                      >
-                        <CornerUpLeft className="w-3.5 h-3.5" />
-                      </button>
-
-                      <span className={`text-[10px] font-mono ${isOut ? 'text-blue-100' : 'text-gray-400'}`}>{msg.timestamp}</span>
-                      {isOut && (
-                        <span>
-                          {msg.status === 'read' ? <CheckCheck className="w-3.5 h-3.5 text-white" /> : msg.status === 'delivered' ? <CheckCheck className="w-3.5 h-3.5 text-blue-200" /> : <Check className="w-3.5 h-3.5 text-blue-200" />}
-                        </span>
-                      )}
-                    </div>
+          </div>
+        ) : (
+          <Virtuoso
+            ref={virtuosoRef}
+            data={chat.messages}
+            alignToBottom={true}
+            followOutput="smooth"
+            className="flex-1 w-full h-full select-text relative z-1 outline-none font-sans"
+            style={{ backgroundColor: getWallpaperBg() }}
+            components={{
+              Header: () => (
+                <div className="flex justify-center mb-4 mt-4 select-none">
+                  <div className="bg-[#f2f2f7]/90 text-gray-600 text-[11px] py-1.5 px-4 rounded-full shadow-sm flex items-center gap-1.5 border border-white/50 backdrop-blur-sm">
+                    <Lock className="w-3.5 h-3.5 text-[#008069]" />
+                    <span>ההודעות מוצפנות ומשותפות אוטומטית דרך JONI</span>
                   </div>
                 </div>
-              );
-            })
-          )}
-          <div ref={messagesEndRef} />
-        </div>
+              )
+            }}
+            itemContent={(_index, msg) => (
+              <div className="px-6 py-1">
+                <MessageBubble
+                  msg={msg}
+                  isGroup={!!chat.isGroup}
+                  voicePlayingId={voicePlayingId}
+                  setVoicePlayingId={setVoicePlayingId}
+                  voiceProgress={voiceProgress}
+                  handleDownloadFile={handleDownloadFile}
+                  setMessageToForward={setMessageToForward}
+                  setForwardSentMap={setForwardSentMap}
+                  setForwardSearchQuery={setForwardSearchQuery}
+                />
+              </div>
+            )}
+          />
+        )}
 
         {/* Input Area */}
         <div className="bg-white/80 backdrop-blur-md px-4 py-3 flex items-center gap-3 z-10 relative border-t border-gray-200">

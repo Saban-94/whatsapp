@@ -7,10 +7,10 @@ export interface Order {
   orderNumber: string;
   customerName: string;
   customerPhone: string;
-  date: string; // YYYY-MM-DD
-  time: string; // HH:MM
+  date: string; 
+  time: string; 
   destination: string;
-  items: string; // Long description of items
+  items: string; 
   driverId: string;
   warehouse: string;
   status: string;
@@ -27,12 +27,24 @@ export interface MorningReport {
   createdAt: string;
 }
 
+export interface Customer {
+  id: string;
+  address: string;
+  contactPerson: string;
+  customerNumber: string;
+  name: string;
+  phone: string;
+  phoneNumber: string;
+  totalOrders: number;
+}
+
 export function useNoaBrain() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [morningReports, setMorningReports] = useState<MorningReport[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // 1. Live listener for 'orders' collection using the verified authentic schema
+  // 1. האזנה חיה להזמנות - ללא נתוני דמה
   useEffect(() => {
     const ordersCol = collection(db, 'orders');
     
@@ -42,99 +54,60 @@ export function useNoaBrain() {
         const data = doc.data();
         list.push({
           id: doc.id,
-          orderNumber: data.orderNumber || `J-${Math.floor(1000 + Math.random() * 9000)}`,
-          customerName: data.customerName || 'לקוח מזדמן',
-          customerPhone: data.customerPhone || 'לא צוין טלפון',
-          date: data.date || new Date().toISOString().split('T')[0],
-          time: data.time || '08:00',
-          destination: data.destination || 'מחסן ראשי ח. סבן',
-          items: data.items || 'חומרי מחצבה מעורבים',
-          driverId: data.driverId || 'טרם שובץ נהג',
-          warehouse: data.warehouse || 'אתר ראשי חדרה',
-          status: data.status || 'בתהליך קליטה',
-          trackingId: data.trackingId || `TRK-${Math.floor(10000 + Math.random() * 90000)}`,
-          createdAt: data.createdAt || new Date().toISOString()
+          orderNumber: data.orderNumber || '',
+          customerName: data.customerName || '',
+          customerPhone: data.customerPhone || '',
+          date: data.date || '',
+          time: data.time || '',
+          destination: data.destination || '',
+          items: data.items || '',
+          driverId: data.driverId || '',
+          warehouse: data.warehouse || '',
+          status: data.status || '',
+          trackingId: data.trackingId || '',
+          createdAt: data.createdAt ? new Date(data.createdAt?.toDate?.() || data.createdAt).toISOString() : new Date().toISOString()
         });
       });
-
-      // Fallback if empty so the system is highly interactive and provides superb demonstrations
-      if (list.length === 0) {
-        list.push(
-          {
-            id: 'ord-101',
-            orderNumber: 'J-9031',
-            customerName: 'קבלני דרום בע״מ',
-            customerPhone: '054-1234567',
-            date: new Date().toISOString().split('T')[0],
-            time: '08:30',
-            destination: 'אתר בנייה שכונת הפרחים, חדרה',
-            items: '3 פולטריילרים חול ים מסונן, 2 סמי-טריילרים מצע א׳',
-            driverId: 'רונן סבג (נהג עצמאי)',
-            warehouse: 'מחצבת שפיה',
-            status: 'בדרך לשטח',
-            trackingId: 'TRK-99011',
-            createdAt: new Date().toISOString()
-          },
-          {
-            id: 'ord-102',
-            orderNumber: 'J-9032',
-            customerName: 'סולל בונה צפון',
-            customerPhone: '052-9876543',
-            date: new Date().toISOString().split('T')[0],
-            time: '09:15',
-            destination: 'מחלף אולגה החדש, מסלול דרומי',
-            items: '50 קוב בטון B30 מוכן, משאבת בטון 36 מטר',
-            driverId: 'מוניר חביב (צוות פנימי)',
-            warehouse: 'מפעל בטון חדרה',
-            status: 'סופק בהצלחה',
-            trackingId: 'TRK-99012',
-            createdAt: new Date().toISOString()
-          }
-        );
-      }
       setOrders(list);
       setLoading(false);
     }, (err) => {
-      console.warn('Orders listener error (using verified premium schema fallbacks):', err);
-      setOrders([
-        {
-          id: 'ord-101',
-          orderNumber: 'J-9031',
-          customerName: 'קבלני דרום בע״מ',
-          customerPhone: '054-1234567',
-          date: new Date().toISOString().split('T')[0],
-          time: '08:30',
-          destination: 'אתר בנייה שכונת הפרחים, חדרה',
-          items: '3 פולטריילרים חול ים מסונן, 2 סמי-טריילרים מצע א׳',
-          driverId: 'רונן סבג (נהג עצמאי)',
-          warehouse: 'מחצבת שפיה',
-          status: 'בדרך לשטח',
-          trackingId: 'TRK-99011',
-          createdAt: new Date().toISOString()
-        },
-        {
-          id: 'ord-102',
-          orderNumber: 'J-9032',
-          customerName: 'סולל בונה צפון',
-          customerPhone: '052-9876543',
-          date: new Date().toISOString().split('T')[0],
-          time: '09:15',
-          destination: 'מחלף אולגה החדש, מסלול דרומי',
-          items: '50 קוב בטון B30 מוכן, משאבת בטון 36 מטר',
-          driverId: 'מוניר חביב (צוות פנימי)',
-          warehouse: 'מפעל בטון חדרה',
-          status: 'סופק בהצלחה',
-          trackingId: 'TRK-99012',
-          createdAt: new Date().toISOString()
-        }
-      ]);
+      console.warn('Orders listener error:', err);
+      setOrders([]);
       setLoading(false);
     });
 
     return () => unsubscribe();
   }, []);
 
-  // 2. Fetch daily data from 'morning_reports' collection
+  // 2. האזנה חיה ללקוחות - נתונים אמיתיים בלבד
+  useEffect(() => {
+    const customersCol = collection(db, 'customers');
+    
+    const unsubscribe = onSnapshot(customersCol, (snapshot) => {
+      const list: Customer[] = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        list.push({
+          id: doc.id,
+          address: data.address || '',
+          contactPerson: data.contactPerson || '',
+          customerNumber: data.customerNumber || '',
+          name: data.name || '',
+          phone: data.phone || data.phoneNumber || '',
+          phoneNumber: data.phoneNumber || data.phone || '',
+          totalOrders: Number(data.totalOrders) || 0
+        });
+      });
+      setCustomers(list);
+    }, (err) => {
+      console.warn('Customers listener error:', err);
+      setCustomers([]);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // 3. שליפת דוחות בוקר - ללא נתוני דמה
   useEffect(() => {
     const fetchMorningReports = async () => {
       try {
@@ -146,78 +119,74 @@ export function useNoaBrain() {
           const data = doc.data();
           list.push({
             id: doc.id,
-            date: data.date || new Date().toLocaleDateString('he-IL'),
-            workforce: data.workforce || 'צוות מלא בשטח',
-            equipmentStatus: data.equipmentStatus || 'תקין וממוזג',
-            notes: data.notes || 'שקט תעשייתי ללא עיכובים',
-            createdAt: data.createdAt || new Date().toISOString()
+            date: data.date || '',
+            workforce: data.workforce || '',
+            equipmentStatus: data.equipmentStatus || '',
+            notes: data.notes || '',
+            createdAt: data.createdAt ? new Date(data.createdAt?.toDate?.() || data.createdAt).toISOString() : new Date().toISOString()
           });
         });
-
-        if (list.length === 0) {
-          list.push({
-            id: 'rep-1',
-            date: new Date().toLocaleDateString('he-IL'),
-            workforce: '12 פועלים, 3 מנופאים',
-            equipmentStatus: 'מנוף זחלי #2 בטיפול תקופתי, שאר הכלים תקינים',
-            notes: 'כל צוותי השטח התייצבו בזמן בחדרה. יציקות בטון מתנהלות כסדרן.',
-            createdAt: new Date().toISOString()
-          });
-        }
         setMorningReports(list);
       } catch (err) {
-        console.warn('Morning reports query error (using premium local values):', err);
-        setMorningReports([{
-          id: 'rep-1',
-          date: new Date().toLocaleDateString('he-IL'),
-          workforce: '12 פועלים, 3 מנופאים',
-          equipmentStatus: 'מנוף זחלי #2 בטיפול תקופתי, שאר הכלים תקינים',
-          notes: 'כל צוותי השטח התייצבו בזמן בחדרה. יציקות בטון מתנהלות כסדרן.',
-          createdAt: new Date().toISOString()
-        }]);
+        console.warn('Morning reports query error:', err);
+        setMorningReports([]);
       }
     };
 
     fetchMorningReports();
   }, []);
 
-  // 3. Generate a smart, professional response using live context from Orders and Morning Reports
-  const getNoaAnalysis = (userInput: string): string => {
+  // 4. ניתוח בקשות ושליפת מידע אמת
+  const getNoaAnalysis = async (userInput: string): Promise<string> => {
     const inputClean = userInput.trim().toLowerCase();
     
-    // Check if looking for orders
+    // ניהול שליפת לקוחות לפי שם
+    if (inputClean.includes('לקוח') || inputClean.includes('כתובת') || inputClean.includes('טלפון')) {
+      const searchTerms = inputClean.split(' ');
+      const matchedCustomers = customers.filter(c => 
+        searchTerms.some(term => term.length > 2 && c.name.toLowerCase().includes(term))
+      );
+
+      if (matchedCustomers.length > 0) {
+        const customersFormat = matchedCustomers.map(c => 
+          `👤 לקוח: ${c.name}\n📍 כתובת: ${c.address}\n📞 טלפון: ${c.phoneNumber}\nאיש קשר: ${c.contactPerson}\nמספר לקוח במערכת: ${c.customerNumber}\nסה"כ הזמנות היסטוריות: ${c.totalOrders}\n------------------------`
+        ).join('\n');
+        return `*נועה AI - נתוני לקוחות מתוך המאגר* 🏢\n\n${customersFormat}\n_סונכרן מול קולקציית customers_`;
+      } else if (customers.length > 0 && inputClean.includes('לקוחות')) {
+         return `במאגר קיימים ${customers.length} לקוחות, אך לא מצאתי לקוח ספציפי שתואם לחיפוש שלך. אנא ציין שם.`;
+      }
+    }
+
+    // ניהול שליפת הזמנות
     if (inputClean.includes('הזמנ') || inputClean.includes('משלוח') || inputClean.includes('אספק') || inputClean.includes('טרקינג')) {
+      if (orders.length === 0) {
+        return `*נועה AI - סטטוס הזמנות* 🏗️\n\nסרקתי את המאגר וכרגע אין הזמנות פעילות במערכת.`;
+      }
+
       const activeOrdsFormat = orders.map(o => {
-        return `📦 הזמנה #${o.orderNumber} | לקוח: ${o.customerName}
-📍 יעד: ${o.destination} | ⏰ שעה: ${o.time} | 📅 תאריך: ${o.date}
-🚚 נהג: ${o.driverId} | 🏢 יציאה מ: ${o.warehouse}
-🛒 תכולה: ${o.items}
-סטטוס: *${o.status}*
-_מזהה מעקב: ${o.trackingId}_
-------------------------`;
+        return `📦 הזמנה #${o.orderNumber} | לקוח: ${o.customerName}\n📍 יעד: ${o.destination} | ⏰ שעה: ${o.time} | 📅 תאריך: ${o.date}\n🚚 נהג: ${o.driverId} | 🏢 יציאה מ: ${o.warehouse}\n🛒 תכולה: ${o.items}\nסטטוס: *${o.status}*\n_מזהה מעקב: ${o.trackingId}_\n------------------------`;
       }).join('\n');
 
-      return `*נועה AI - דוח הזמנות פעיל ומפורט של ח. סבן* 🏗️\n\n${activeOrdsFormat}\n\n_הנתונים מסונכרנים בזמן אמת מול קולקציית Firestore - "orders"_`;
+      return `*נועה AI - דוח הזמנות פעיל ומפורט של ח. סבן* 🏗️\n\n${activeOrdsFormat}\n\n_הנתונים מסונכרנים בזמן אמת מול קולקציית Firestore_`;
     }
 
-    // Check if looking for daily report / morning status
+    // ניהול סטטוס בוקר
     if (inputClean.includes('בוקר') || inputClean.includes('דוח') || inputClean.includes('מצב') || inputClean.includes('צוות')) {
-      const latestRep = morningReports[0] || {
-        date: new Date().toLocaleDateString('he-IL'),
-        workforce: '12 פועלים, 3 מנופאים',
-        equipmentStatus: 'מנוף זחלי #2 בטיפול תקופתי, שאר הכלים תקינים',
-        notes: 'כל צוותי השטח התייצבו בזמן בחדרה. יציקות בטון מתנהלות כסדרן.'
-      };
-      return `*נועה AI - סטטוס בוקר יומי (${latestRep.date})* ☀️\n\n• *כוח אדם:* ${latestRep.workforce}\n• *סטטוס ציוד:* ${latestRep.equipmentStatus}\n• *הערות שטח:* ${latestRep.notes}\n\n_משוך מקולקציית Firestore המאומתת - "morning_reports"_`;
+      if (morningReports.length === 0) {
+        return `*נועה AI - סטטוס בוקר* ☀️\n\nטרם הוזן דוח בוקר להיום במערכת.`;
+      }
+      const latestRep = morningReports[0];
+      return `*נועה AI - סטטוס בוקר יומי (${latestRep.date})* ☀️\n\n• *כוח אדם:* ${latestRep.workforce}\n• *סטטוס ציוד:* ${latestRep.equipmentStatus}\n• *הערות שטח:* ${latestRep.notes}\n\n_משוך מקולקציית morning_reports_`;
     }
 
-    // Default enhanced text
+    // תשובת ברירת מחדל אסינכרונית
     return `*הודעת עדכון - ח. סבן* 🏗️\n\n${userInput}\n\n_לכל שאלה ניתן לפנות למשרד._\nsent via JONI`;
   };
 
   return {
     orders,
     morningReports,
+    customers,
     loading,
     getNoaAnalysis
   };

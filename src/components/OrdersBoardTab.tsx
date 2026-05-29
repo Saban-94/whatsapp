@@ -134,11 +134,12 @@ function OrderCardComponent({
         outline: isFlipping
           ? `2.5px solid ${glow}`
           : "2.5px solid transparent",
-        zIndex: isFlipping ? 20 : 1
+        zIndex: isFlipping ? 20 : 1,
+        ['--glow-color' as any]: glow
       }}
       className={`bg-white rounded-2xl border ${colors.border} shadow-sm hover:shadow-lg hover:border-gray-300 flex flex-col overflow-hidden relative ${
         isItemUpdating ? 'opacity-60 pointer-events-none' : ''
-      }`}
+      } ${isFlipping ? 'status-update-glow' : ''}`}
     >
       {/* Status accent top line */}
       <div className={`h-1.5 w-full ${

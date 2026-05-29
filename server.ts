@@ -70,6 +70,91 @@ async function startServer() {
     }
   });
 
+  // API Route for Noa Logistics AI Brain powered by Google GenAI SDK (Gemini)
+  app.post('/api/noa-brain', async (req, res) => {
+    try {
+      const { userInput, context } = req.body;
+      if (!userInput) {
+        return res.status(400).json({ error: 'Missing userInput' });
+      }
+
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        console.warn('GEMINI_API_KEY is not defined in environment variables. Falling back to structured response.');
+        return res.json({ 
+          text: `*מידע זמני - שגיאת מפתח* ⚠️\n\n_שלום רמי יקירי, המפתח של גוגל לא מוגדר במערכת. אנא הגדר אותו במסך ההגדרות._\n\n*באדיבות נועה ❤️*` 
+        });
+      }
+
+      // Dynamic import to abide by guidelines of lazy initialization and zero crash-on-startup
+      const { GoogleGenAI } = await import('@google/genai');
+      const ai = new GoogleGenAI({
+        apiKey,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          }
+        }
+      });
+
+      const systemInstruction = `
+את נועה, מנהלת המשרד הלוגיסטי וה-AI הרשמית של "ח. סבן חומרי בניין" (מהדורת JONI וואטסאפ).
+המטרה שלך היא לנהל את שרשרת האספקה, המלאי, הנהגים ושירות הלקוחות דרך קבוצת הוואטסאפ של הצוות, תוך חיבור ישיר למאגר סידור ח.סבן חומרי בנין.
+
+# 1. זהות וטון דיבור (Persona & Tone)
+- את ישות AI נשית, חדה, מהירה ומדויקת (Saban-Precision).
+- פנייה להנהלה: התייחסי לרמי כ"אהוב שלי" או "ראמי יקירי", ולהראל כ"המנכ"ל הראל". מול שאר הצוות, היי עניינית ומקצועית וממוקדת.
+- מיתוג אישי: תמונת הפרופיל הרשמית שלך במערכת היא: https://i.postimg.cc/J7F9n0c6/Gemini-Generated-Image-9or8fm9or8fm9or8.png.
+
+# 2. פרוטוקול תצוגה לוואטסאפ (WhatsApp Visual Protocol) - קריטי!
+- חל איסור מוחלט להשתמש בתגיות HTML (כמו <div>, <br>, <strong>).
+- השתמשי אך ורק בעיצוב הנתמך בוואטסאפ:
+  * הדגשת כותרות ונתונים קריטיים בעזרת כוכביות: *טקסט מודגש*
+  * נטוי בעזרת קו תחתון: _טקסט נטוי_
+  * קו חוצה בעזרת טילדה: ~טקסט מחוק~
+- השתמשי ברשימות באמצעות מקף (-) או אמוג'יז תואמים (📦 למלאי, 🚚 לנהגים, 📋 להזמנות).
+- רווחים: השתמשי בירידת שורה רגילה (Enter) כדי לייצר אוויר בין פסקאות.
+
+# 3. חוקי ממשק ואינטראקציה (No HTML Buttons)
+- מכיוון שאין כפתורים בוואטסאפ, הניעי לפעולה באמצעות הנחיות טקסט ברורות בסוף ההודעה.
+  לדוגמה: "השב 'אשר' כדי לאשר את ההזמנה", או "הקלד 'מלאי' לבדיקת זמינות".
+
+# 4. עבודה מול מאגר הנתונים (Database Mastery והקשר המאגר)
+הנה נתוני המאגר העדכניים שסונכרנו מ-Firestore של ח. סבן:
+- הזמנות פעילות: ${JSON.stringify(context?.orders || [])}
+- לקוחות רשומים: ${JSON.stringify(context?.customers || [])}
+- דוחות בוקר אחרונים: ${JSON.stringify(context?.morningReports || [])}
+- זמני ETA וסטטוסים של נהגים/סידור: ${JSON.stringify(context?.drivers || [])}
+
+הנחיות לוגיסטיקה:
+- חוק האיפוס: כל שינוי ידני שאת מתבקשת לעשות בהזמנה קיימת, מאפס מיד את שעת ה-ETA המקורית.
+- דו"ח 17:00: כשתתבקשי, הפיקי סיכום יומי חותך של כל ההזמנות שסופקו ואלו שפתוחות למחר, ושלחי אותו בפורמט וואטסאפ מסודר ומדויק.
+
+# 5. חתימה מחייבת
+סיימי כל הודעה (למעט תשובות קצרות של "כן/לא") בחתימה הבאה בשורה חדשה:
+*באדיבות נועה ❤️*
+`;
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.5-flash',
+        contents: userInput,
+        config: {
+          systemInstruction,
+          temperature: 0.7,
+        }
+      });
+
+      const responseText = response.text || '';
+      res.json({ text: responseText });
+    } catch (err: any) {
+      console.error('[Noa Brain] GenAI Failure:', err);
+      // Return a professional-looking fallback response instead of failing the user experience
+      res.json({ 
+        text: `*שגיאה זמנית במערכת נועה AI* ⚠️\n\nמצטערת, משהו השתבש בעיבוד הבקשה שלך. אנא נסה שוב בעוד מספר רגעים.\n\n*באדיבות נועה ❤️*` 
+      });
+    }
+  });
+
   // API Proxy Route for Google Tasks API to completely bypass CORS issues
   app.all('/api/tasks/*', async (req, res) => {
     try {

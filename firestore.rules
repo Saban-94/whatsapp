@@ -13,7 +13,7 @@ service cloud.firestore {
     }
 
     function isVerified() {
-      return isSignedIn() && request.auth.token.email_verified == true;
+      return isSignedIn();
     }
 
     function isOwner(userId) {
@@ -29,6 +29,10 @@ service cloud.firestore {
 
     function existing() {
       return resource.data;
+    }
+
+    function isAdmin() {
+      return isVerified() && request.auth.token.email == 'hsaban2025@gmail.com';
     }
 
     // Validation for JoniUser
@@ -51,18 +55,140 @@ service cloud.firestore {
         && data.status is string && data.status.size() <= 64;
     }
 
+    // Validation for Order
+    function isValidOrder(data) {
+      return data.customerName is string && data.customerName.size() <= 256
+        && (data.date == null || (data.date is string && data.date.size() <= 64))
+        && (data.time == null || (data.time is string && data.time.size() <= 64))
+        && (data.driverId == null || (data.driverId is string && data.driverId.size() <= 128))
+        && (data.destination == null || (data.destination is string && data.destination.size() <= 256))
+        && (data.items == null || (data.items is string && data.items.size() <= 2048))
+        && (data.orderNumber == null || (data.orderNumber is string && data.orderNumber.size() <= 128))
+        && (data.warehouse == null || (data.warehouse is string && data.warehouse.size() <= 128))
+        && (data.status == null || (data.status is string && (
+          data.status == 'pending' || 
+          data.status == 'preparing' || 
+          data.status == 'ready' || 
+          data.status == 'on_the_way' || 
+          data.status == 'delivered' || 
+          data.status == 'cancelled'
+        )));
+    }
+
+    // Chat History Collection rules
+    match /chat_history/{messageId} {
+      allow read: if isVerified();
+      allow create: if isVerified();
+      allow update: if false;
+      allow delete: if isAdmin();
+    }
+
+    // Bridge Sessions Collection rules
+    match /bridge_sessions/{sessionId} {
+      allow read: if isVerified();
+      allow create: if isVerified() && isValidOrder(incoming());
+      allow update: if isVerified() && isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // VIP User Magic Pages Collection rules
+    match /user_magic_pages/{userId} {
+      allow read: if isVerified();
+      allow create: if isVerified() && isOwner(userId);
+      allow update: if isVerified() && (isOwner(userId) || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    // Office Messages Collection rules
+    match /office_messages/{messageId} {
+      allow read: if isVerified();
+      allow create: if isVerified();
+      allow update: if isVerified();
+      allow delete: if isAdmin();
+    }
+
+    // Orders Collection rules
+    match /orders/{orderId} {
+      allow read: if isVerified();
+      allow create: if isVerified() && isValidOrder(incoming());
+      allow update: if isVerified() && (
+        isAdmin() || 
+        (incoming().diff(existing()).affectedKeys().hasOnly(['status', 'eta', 'driverId', 'updatedAt'])
+         && (incoming().status == 'pending' || incoming().status == 'preparing' || incoming().status == 'ready' || incoming().status == 'on_the_way' || incoming().status == 'delivered' || incoming().status == 'cancelled'))
+      );
+      allow delete: if isAdmin();
+    }
+
+    // Morning Reports Collection rules
+    match /morning_reports/{reportId} {
+      allow read: if isVerified();
+      allow create, update: if isVerified();
+      allow delete: if isAdmin();
+    }
+
+    // Inventory Rules Collection rules
+    match /inventoryRules/{ruleId} {
+      allow read: if isVerified();
+      allow create, update: if isVerified();
+      allow delete: if isAdmin();
+    }
+
+    // Inventory Collection rules
+    match /inventory/{itemId} {
+      allow read: if isVerified();
+      allow create, update: if isVerified();
+      allow delete: if isAdmin();
+    }
+
+    // Sales Collection rules
+    match /sales/{saleId} {
+      allow read: if isVerified();
+      allow create: if isVerified();
+      allow update: if isVerified();
+      allow delete: if isAdmin();
+    }
+
+    // Drivers Collection rules
+    match /drivers/{driverId} {
+      allow read: if isVerified();
+      allow create, update: if isVerified();
+      allow delete: if isAdmin();
+    }
+
+    // Customers Collection rules
+    match /customers/{customerId} {
+      allow read: if isVerified();
+      allow create, update: if isVerified();
+      allow delete: if isAdmin();
+    }
+
+    // Reminders Collection rules
+    match /reminders/{reminderId} {
+      allow read: if isVerified();
+      allow create, update: if isVerified();
+      allow delete: if isAdmin();
+    }
+
+    // Nested private messages rules
+    match /users/{userId}/messages/{messageId} {
+      allow read: if isVerified() && isOwner(userId);
+      allow create: if isVerified() && (isOwner(userId) || isAdmin());
+      allow update: if isVerified() && (isOwner(userId) || isAdmin());
+      allow delete: if isAdmin();
+    }
+
     // Users Collection rules
     match /joni_users/{userId} {
       allow read: if isVerified();
       allow create, update: if isVerified() && isOwner(userId) && isValidJoniUser(incoming());
-      allow delete: if false;
+      allow delete: if isAdmin();
     }
 
-    // Outbox Collection rules (Write-Only queue)
+    // Outbox Collection rules
     match /joni_outbox/{msgId} {
       allow read: if isVerified();
       allow create: if isVerified() && isValidJoniOutbox(incoming());
-      allow update, delete: if false;
+      allow update, delete: if isAdmin();
     }
 
   }

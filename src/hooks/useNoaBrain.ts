@@ -185,6 +185,32 @@ export function useNoaBrain() {
 
   // 4. ניתוח בקשות ושליפת מידע אמת
   const getNoaAnalysis = async (userInput: string): Promise<string> => {
+    try {
+      const response = await fetch('/api/noa-brain', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          userInput,
+          context: {
+            orders,
+            customers,
+            morningReports
+          }
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data && data.text) {
+          return data.text;
+        }
+      }
+    } catch (err) {
+      console.error('Failed to communicate with Noa Brain server endpoint:', err);
+    }
+
     const inputClean = userInput.trim().toLowerCase();
     
     // זיהוי לקוחות שהוזכרו בהודעה באופן פשוט וחסין

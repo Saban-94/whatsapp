@@ -273,15 +273,17 @@ export default function ChatWindow({
   };
 
   // שדרוג 2: שילוב מנוע "נועה" לשדרוג טקסט
-  const handleAskNoa = () => {
+  const handleAskNoa = async () => {
     if (!inputText.trim()) return;
     setIsNoaProcessing(true);
-    
-    setTimeout(() => {
-      const enhancedText = getNoaAnalysis(inputText);
+    try {
+      const enhancedText = await getNoaAnalysis(inputText);
       setInputText(enhancedText);
+    } catch (err) {
+      console.error("Failed to fetch Noa response:", err);
+    } finally {
       setIsNoaProcessing(false);
-    }, 1200);
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {

@@ -92,13 +92,26 @@ function OrderCardComponent({
       setPrevStatus(order.status);
       const timer = setTimeout(() => {
         setAnimateTrigger(false);
-      }, 1000);
+      }, 1200);
       return () => clearTimeout(timer);
     }
   }, [order.status, prevStatus]);
 
+  const getGlowColor = (status: string) => {
+    switch (status) {
+      case 'pending': return 'rgba(245, 158, 11, 0.6)';
+      case 'preparing': return 'rgba(59, 130, 246, 0.6)';
+      case 'ready': return 'rgba(168, 85, 247, 0.6)';
+      case 'on_the_way': return 'rgba(6, 182, 212, 0.6)';
+      case 'delivered': return 'rgba(16, 185, 129, 0.6)';
+      case 'cancelled': return 'rgba(244, 63, 94, 0.6)';
+      default: return 'rgba(0, 168, 132, 0.6)';
+    }
+  };
+
   const colors = getStatusColors(order.status);
   const isItemUpdating = updatingId === order.id;
+  const glow = getGlowColor(order.status);
 
   return (
     <motion.div
@@ -108,14 +121,20 @@ function OrderCardComponent({
       initial={{ opacity: 0, y: 15 }}
       style={{ perspective: 1200 }}
       animate={animateTrigger ? {
-        scale: [1, 1.05, 1.05, 1],
-        rotateX: [0, -15, 15, 0],
-        rotateY: [0, 10, -10, 0],
+        scale: [1, 1.04, 1.04, 1],
+        rotateX: [0, -8, 8, 0],
+        rotateY: [0, 5, -5, 0],
         boxShadow: [
           "0 1px 3px 0 rgba(0,0,0,0.1), 0 1px 2px 0 rgba(0,0,0,0.06)",
-          "0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
-          "0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+          `0 0 0 5px ${glow}, 0 20px 25px -5px rgba(0,0,0,0.15)`,
+          `0 0 0 5px ${glow}, 0 20px 25px -5px rgba(0,0,0,0.15)`,
           "0 1px 3px 0 rgba(0,0,0,0.1), 0 1px 2px 0 rgba(0,0,0,0.06)"
+        ],
+        outline: [
+          "2.5px solid transparent",
+          `2.5px solid ${glow}`,
+          `2.5px solid ${glow}`,
+          "2.5px solid transparent"
         ],
         zIndex: 20
       } : {
@@ -125,14 +144,15 @@ function OrderCardComponent({
         rotateX: 0,
         rotateY: 0,
         boxShadow: "0 1px 3px 0 rgba(0,0,0,0.1), 0 1px 2px 0 rgba(0,0,0,0.06)",
+        outline: "2.5px solid transparent",
         zIndex: 1
       }}
       exit={{ opacity: 0, scale: 0.95 }}
       transition={{
-        duration: 0.9,
+        duration: 1.1,
         ease: "easeInOut"
       }}
-      className={`bg-white rounded-2xl border ${colors.border} shadow-sm hover:shadow-lg hover:border-gray-300 transition-shadow duration-300 flex flex-col overflow-hidden relative ${
+      className={`bg-white rounded-2xl border ${colors.border} shadow-sm hover:shadow-lg hover:border-gray-300 transition-all duration-300 flex flex-col overflow-hidden relative ${
         isItemUpdating ? 'opacity-60 pointer-events-none' : ''
       }`}
     >

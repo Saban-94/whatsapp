@@ -4,7 +4,9 @@ import { getAuth, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { getStorage } from "firebase/storage";
 import { getDatabase, ref, push, set } from "firebase/database";
 import firebaseConfig from "../../firebase-applet-config.json";
-
+// חיבור ישיר ומפורש למאגר הלוגיסטי האמיתי (דורס את ברירת המחדל)
+const DB_ID = "ai-studio-cc5d2687-b402-4b97-b808-5ba700689e0e";
+export const db = getFirestore(app, DB_ID);
 export enum OperationType {
   CREATE = 'create',
   UPDATE = 'update',

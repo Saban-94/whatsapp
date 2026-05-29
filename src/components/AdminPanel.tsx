@@ -287,13 +287,13 @@ export default function AdminPanel({ isOpen, onClose, chats, onImportContact, on
   };
 
   const filteredGoogleContacts = googleContacts.filter((c) => {
-    const term = contactsSearchTerm.toLowerCase();
-    return c.name.toLowerCase().includes(term) || c.phone.toLowerCase().includes(term);
+    const term = (contactsSearchTerm || '').toLowerCase();
+    return (c.name || '').toLowerCase().includes(term) || (c.phone || '').toLowerCase().includes(term);
   });
 
   const filteredAppUsers = chats.filter((chat) => {
-    const term = usersSearchTerm.toLowerCase();
-    return chat.name.toLowerCase().includes(term) || (chat.phoneNumber && chat.phoneNumber.toLowerCase().includes(term));
+    const term = (usersSearchTerm || '').toLowerCase();
+    return (chat.name || '').toLowerCase().includes(term) || (chat.phoneNumber && (chat.phoneNumber || '').toLowerCase().includes(term));
   });
 
   if (!isOpen) return null;

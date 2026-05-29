@@ -309,14 +309,14 @@ export default function ChatWindow({
   };
 
   const filteredMessages = chat.messages.filter(msg => 
-    msg.text.toLowerCase().includes(chatSearchQuery.toLowerCase())
+    (msg.text || '').toLowerCase().includes((chatSearchQuery || '').toLowerCase())
   );
 
   const mediaImages = chat.messages.filter(msg => msg.mediaType === 'image' && msg.mediaUrl);
   const mediaDocs = chat.messages.filter(msg => 
     (msg.mediaType === 'doc' && msg.mediaUrl) || 
-    msg.text?.toLowerCase().endsWith('.pdf') || 
-    (msg.mediaUrl && msg.mediaType !== 'image' && msg.mediaType !== 'voice' && !msg.text?.includes('הודעה קולית'))
+    (msg.text || '').toLowerCase().endsWith('.pdf') || 
+    (msg.mediaUrl && msg.mediaType !== 'image' && msg.mediaType !== 'voice' && !(msg.text || '').includes('הודעה קולית'))
   );
 
   const emojis = ['😃', '😂', '👍', '❤️', '🙏', '🔥', '🎉', '💡', '🏗️', '📦', '🚚', '📋', '✅', '⏳', '🛑', '⚠️', '👷'];
@@ -848,7 +848,7 @@ export default function ChatWindow({
             {/* Modal Scrollable Chat Choices */}
             <div className="flex-1 overflow-y-auto bg-white p-2 space-y-1">
               {chats
-                .filter(c => c.name.toLowerCase().includes(forwardSearchQuery.toLowerCase()))
+                .filter(c => (c.name || '').toLowerCase().includes((forwardSearchQuery || '').toLowerCase()))
                 .map((targetChat) => {
                   const hasSent = !!forwardSentMap[targetChat.id];
                   return (
@@ -887,7 +887,7 @@ export default function ChatWindow({
                     </div>
                   );
                 })}
-              {chats.filter(c => c.name.toLowerCase().includes(forwardSearchQuery.toLowerCase())).length === 0 && (
+              {chats.filter(c => (c.name || '').toLowerCase().includes((forwardSearchQuery || '').toLowerCase())).length === 0 && (
                 <div className="text-center text-xs text-gray-400 py-8">
                   לא נמצאו אנשי קשר תואמים
                 </div>

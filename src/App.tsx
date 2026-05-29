@@ -359,7 +359,7 @@ export default function App() {
       }));
     }, 1300);
 
-    setTimeout(() => {
+    setTimeout(async () => {
       // Craft responsive Hebrew automatic sentences based on matching chat titles!
       const replyingChat = chats.find(c => c.id === chatId);
       if (!replyingChat) return;
@@ -368,7 +368,7 @@ export default function App() {
       const lowercaseUserText = text.toLowerCase();
 
       if (replyingChat.name.includes('נועה')) {
-        replyText = getNoaAnalysis(text);
+        replyText = await getNoaAnalysis(text);
       } else if (replyingChat.name.includes('אמא')) {
         if (lowercaseUserText.includes('שבת') || lowercaseUserText.includes('אוכל')) {
           replyText = 'האוכל כמעט מוכן חמוד שלי! הכנתי לך מנה מיוחדת ועוגת שוקולד 🍰';
@@ -541,8 +541,8 @@ export default function App() {
     if (!term) return true;
 
     // Search by Chat name OR message texts inside chat
-    const matchName = chat.name.toLowerCase().includes(term);
-    const matchMsgs = chat.messages.some(m => m.text.toLowerCase().includes(term));
+    const matchName = (chat.name || '').toLowerCase().includes(term);
+    const matchMsgs = chat.messages.some(m => (m.text || '').toLowerCase().includes(term));
     return matchName || matchMsgs;
   });
 

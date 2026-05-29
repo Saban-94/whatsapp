@@ -144,7 +144,7 @@ export function useNoaBrain() {
     if (inputClean.includes('לקוח') || inputClean.includes('כתובת') || inputClean.includes('טלפון')) {
       const searchTerms = inputClean.split(' ');
       const matchedCustomers = customers.filter(c => 
-        searchTerms.some(term => term.length > 2 && c.name.toLowerCase().includes(term))
+        searchTerms.some(term => term.length > 2 && (c.name || '').toLowerCase().includes(term))
       );
 
       if (matchedCustomers.length > 0) {

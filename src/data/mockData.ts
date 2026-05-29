@@ -1,8 +1,8 @@
 import { Chat, UserProfile, StatusStory } from '../types';
 
 export const currentUserProfile: UserProfile = {
-  name: 'ראמי סבן',
-  avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&h=150&q=80',
+  name: 'ראמי אהובי סבן',
+  avatar: 'https://i.postimg.cc/BZBHJ7WN/final-cinematic.jpg',
   status: 'מנהל מערכת ח. סבן',
   phoneNumber: '+972 50-123-4567',
 };
@@ -10,7 +10,7 @@ export const currentUserProfile: UserProfile = {
 export const initialChats: Chat[] = [
   {
     id: '1',
-    name: 'נועה - מנהלת משרד AI 🌿',
+    name: 'נועה - מנהלת סידור AI 🌿',
     avatar: 'https://i.postimg.cc/J7F9n0c6/Gemini-Generated-Image-9or8fm9or8fm9or8.png',
     statusText: 'מחוברת',
     isOnline: true,

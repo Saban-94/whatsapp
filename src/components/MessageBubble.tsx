@@ -20,6 +20,7 @@ interface MessageBubbleProps {
   setMessageToForward: (msg: Message | null) => void;
   setForwardSentMap: (map: Record<string, boolean>) => void;
   setForwardSearchQuery: (query: string) => void;
+  readReceiptsEnabled?: boolean;
 }
 
 export const MessageBubble = React.memo(({
@@ -31,7 +32,8 @@ export const MessageBubble = React.memo(({
   handleDownloadFile,
   setMessageToForward,
   setForwardSentMap,
-  setForwardSearchQuery
+  setForwardSearchQuery,
+  readReceiptsEnabled = true
 }: MessageBubbleProps) => {
   const isOut = msg.isOutgoing;
   
@@ -127,7 +129,7 @@ export const MessageBubble = React.memo(({
           {isOut && (
             <span>
               {msg.status === 'read' ? (
-                <CheckCheck className="w-3.5 h-3.5 text-white" />
+                <CheckCheck className={`w-3.5 h-3.5 ${readReceiptsEnabled ? 'text-white' : 'text-blue-200'}`} />
               ) : msg.status === 'delivered' ? (
                 <CheckCheck className="w-3.5 h-3.5 text-blue-200" />
               ) : (

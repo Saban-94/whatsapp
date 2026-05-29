@@ -34,6 +34,7 @@ interface SidebarProps {
   searchTerm: string;
   onSearchChange: (val: string) => void;
   dir: 'rtl' | 'ltr';
+  readReceiptsEnabled?: boolean;
 }
 
 export default function Sidebar({
@@ -50,7 +51,8 @@ export default function Sidebar({
   onMarkAllAsRead,
   searchTerm,
   onSearchChange,
-  dir
+  dir,
+  readReceiptsEnabled = true
 }: SidebarProps) {
   const [showDropdown, setShowDropdown] = useState(false);
 
@@ -113,7 +115,7 @@ export default function Sidebar({
                   {lastMessage && lastMessage.isOutgoing && (
                     <span className="shrink-0 select-none">
                       {lastMessage.status === 'read' ? (
-                        <CheckCheck className="w-4 h-4 text-[#53bdeb]" />
+                        <CheckCheck className={`w-4 h-4 ${readReceiptsEnabled ? 'text-[#53bdeb]' : 'text-[#667781]'}`} />
                       ) : lastMessage.status === 'delivered' ? (
                         <CheckCheck className="w-4 h-4 text-[#667781]" />
                       ) : (

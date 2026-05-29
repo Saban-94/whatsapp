@@ -432,9 +432,21 @@ interface SettingsDrawerProps extends DrawerProps {
   sidebarPosition: 'left' | 'right';
   onSidebarPositionChange: (pos: 'left' | 'right') => void;
   onClearChats: () => void;
+  readReceiptsEnabled: boolean;
+  onReadReceiptsEnabledChange: (enabled: boolean) => void;
 }
 
-export function SettingsDrawer({ onClose, currentTheme, onThemeChange, sidebarPosition, onSidebarPositionChange, onClearChats, dir }: SettingsDrawerProps) {
+export function SettingsDrawer({ 
+  onClose, 
+  currentTheme, 
+  onThemeChange, 
+  sidebarPosition, 
+  onSidebarPositionChange, 
+  onClearChats, 
+  dir,
+  readReceiptsEnabled,
+  onReadReceiptsEnabledChange
+}: SettingsDrawerProps) {
   const themes = [
     { id: 'classic', name: 'בז׳ קלאסי', color: '#efeae2' },
     { id: 'green', name: 'ירוק מנטה', color: '#e2efeb' },
@@ -504,6 +516,33 @@ export function SettingsDrawer({ onClose, currentTheme, onThemeChange, sidebarPo
           <p className="text-[11px] text-[#667781] mt-2 leading-snug">
             שנה את פריסת המסך לחיוג שונה של חלון הצ׳אט לפי העדפת המשתמש.
           </p>
+        </div>
+
+        {/* Read Receipts (Blue Ticks) Toggle */}
+        <div className="bg-white rounded-lg p-4 shadow-xs mb-4 border border-gray-100">
+          <div className="flex items-center justify-between">
+            <div className="text-right">
+              <span className="text-xs text-[#008069] font-semibold block mb-1">אישורי קריאה (וי כחול)</span>
+              <p className="text-[11px] text-[#667781] leading-snug">
+                אם תכבה אישורי קריאה, הודעות יוצאות שנקראו יישארו בצבע אפור (וי כפול אפור) במקום כחול.
+              </p>
+            </div>
+            
+            <button
+              type="button"
+              onClick={() => onReadReceiptsEnabledChange(!readReceiptsEnabled)}
+              className={`w-11 h-6 shrink-0 rounded-full transition-colors relative focus:outline-none cursor-pointer border-0 p-0 ${
+                readReceiptsEnabled ? 'bg-[#00a884]' : 'bg-gray-300'
+               }`}
+              aria-label="Toggle Read Receipts"
+            >
+              <span
+                className={`absolute top-0.5 left-0.5 bg-white w-5 h-5 rounded-full shadow-md transition-transform duration-200 ${
+                  readReceiptsEnabled ? 'translate-x-5' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
         </div>
 
         {/* System Reset Actions */}

@@ -155,6 +155,12 @@ export default function App() {
     return (saved as any) || 'right'; // Default to RTL layout: right
   });
 
+  // Read receipts toggle setting (blue ticks): defaults to true
+  const [readReceiptsEnabled, setReadReceiptsEnabled] = useState<boolean>(() => {
+    const saved = localStorage.getItem('whatsapp_clone_read_receipts');
+    return saved !== 'false';
+  });
+
   // PWA and Mobile-Responsive States
   const [isMobile, setIsMobile] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -248,6 +254,10 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('whatsapp_clone_sidebar_pos', sidebarPosition);
   }, [sidebarPosition]);
+
+  useEffect(() => {
+    localStorage.setItem('whatsapp_clone_read_receipts', String(readReceiptsEnabled));
+  }, [readReceiptsEnabled]);
 
   // Handle active chat changes to clear unread metrics
   useEffect(() => {
@@ -636,6 +646,8 @@ export default function App() {
                       onSidebarPositionChange={setSidebarPosition}
                       onClearChats={handleClearChatsToDefault}
                       onClose={() => setActiveDrawer(null)}
+                      readReceiptsEnabled={readReceiptsEnabled}
+                      onReadReceiptsEnabledChange={setReadReceiptsEnabled}
                     />
                   </motion.div>
                 )}
@@ -672,6 +684,7 @@ export default function App() {
                 onMarkAllAsRead={handleMarkAllAsRead}
                 searchTerm={sidebarSearchTerm}
                 onSearchChange={setSidebarSearchTerm}
+                readReceiptsEnabled={readReceiptsEnabled}
               />
             </div>
           )}
@@ -690,6 +703,7 @@ export default function App() {
                 chats={chats}
                 onOpenAdmin={() => setIsAdminOpen(true)}
                 onTogglePinChat={handleTogglePinChat}
+                readReceiptsEnabled={readReceiptsEnabled}
               />
             </div>
           )}

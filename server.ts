@@ -14,7 +14,7 @@ async function startServer() {
   app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Target-Webhook');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Target-Webhook, X-Google-Webhook');
     if (req.method === 'OPTIONS') {
       return res.sendStatus(200);
     }
@@ -24,9 +24,11 @@ async function startServer() {
   // API Proxy Route for Google Apps Script to completely bypass CORS issues
   app.post('/api/google-apps-script', async (req, res) => {
     try {
-      let targetUrl = req.headers['x-target-webhook'] as string || process.env.VITE_GOOGLE_APPS_SCRIPT_WEBHOOK;
+      let targetUrl = req.headers['x-target-webhook'] as string 
+        || req.headers['x-google-webhook'] as string 
+        || process.env.VITE_GOOGLE_APPS_SCRIPT_WEBHOOK;
       if (!targetUrl) {
-        return res.status(400).json({ error: 'Missing target webhook URL. Please provide x-target-webhook header.' });
+        return res.status(400).json({ error: 'Missing target webhook URL. Please provide x-target-webhook or x-google-webhook header.' });
       }
 
       // Loop protection: If the target URL redirects back to the proxy route (e.g. Cloud Run proxy route to bypass CORS),

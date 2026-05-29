@@ -34,8 +34,8 @@ import {
   Cell 
 } from 'recharts';
 import { Chat } from '../types';
-import { auth, loginAndGetAccessToken, db, logout } from '../lib/firebase';
-import { doc, setDoc } from 'firebase/firestore';
+import { auth, loginAndGetAccessToken, db, logout, handleFirestoreError, OperationType } from '../lib/firebase';
+import { doc, setDoc, collection, addDoc } from 'firebase/firestore';
 import { onAuthStateChanged, User } from 'firebase/auth';
 
 interface AdminPanelProps {
@@ -58,8 +58,18 @@ export default function AdminPanel({ isOpen, onClose, chats, onImportContact, on
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
 
   // Admin section Tabs and Selected stats
-  const [adminTab, setAdminTab] = useState<'contacts' | 'stats'>('stats'); // Defaulting to stats to highlight the new feature immediately!
+  const [adminTab, setAdminTab] = useState<'contacts' | 'stats' | 'broadcast'>('broadcast'); // Defaulting to broadcast so the user sees the new tab immediately!
   const [selectedGroupId, setSelectedGroupId] = useState<string>('g1');
+
+  // Broadcast State
+  const [broadcastMessage, setBroadcastMessage] = useState('');
+  const [broadcastMediaType, setBroadcastMediaType] = useState<'text' | 'image' | 'voice' | 'doc'>('text');
+  const [broadcastMediaUrl, setBroadcastMediaUrl] = useState('');
+  const [selectedCustomerIds, setSelectedCustomerIds] = useState<string[]>([]);
+  const [broadcastSearchTerm, setBroadcastSearchTerm] = useState('');
+  const [isBroadcasting, setIsBroadcasting] = useState(false);
+  const [broadcastStatus, setBroadcastStatus] = useState<string | null>(null);
+  const [broadcastError, setBroadcastError] = useState<string | null>(null);
 
   // Predefined group stats representing realistic project chats
   const defaultGroupStats = [
@@ -286,6 +296,79 @@ export default function AdminPanel({ isOpen, onClose, chats, onImportContact, on
     }
   };
 
+  const eligibleCustomers = chats.filter(chat => !chat.isGroup && chat.id !== '1');
+
+  const handleSendBroadcast = async () => {
+    if (selectedCustomerIds.length === 0) {
+      setBroadcastError('חובה לבחור לפחות לקוח אחד לקבלת השידור המרוכז.');
+      return;
+    }
+    if (!broadcastMessage.trim()) {
+      setBroadcastError('חובה להזין תוכן הודעה לשליחה.');
+      return;
+    }
+
+    setIsBroadcasting(true);
+    setBroadcastStatus('מתחיל שידור מרוכז...');
+    setBroadcastError(null);
+
+    let successCount = 0;
+    try {
+      const outboxRef = collection(db, 'joni_outbox');
+      for (let i = 0; i < selectedCustomerIds.length; i++) {
+        const customerId = selectedCustomerIds[i];
+        const target = chats.find(c => c.id === customerId);
+        if (!target) continue;
+
+        const phoneNum = target.phoneNumber || '';
+        const sanitizedPhone = phoneNum.replace(/[^\d+]/g, '');
+
+        if (!sanitizedPhone) {
+          console.warn(`Customer ${target.name} has no phone number, skipping`);
+          continue;
+        }
+
+        setBroadcastStatus(`שולח אל ${target.name} (${i + 1}/${selectedCustomerIds.length})...`);
+
+        // Build JONI payload exactly matching validation rules in firestore.rules and firebase-blueprint.json
+        const payload = {
+          phoneNumber: sanitizedPhone,
+          text: broadcastMessage,
+          mediaType: broadcastMediaType,
+          mediaUrl: broadcastMediaUrl || null,
+          timestamp: new Date().toISOString(),
+          source: 'Saban AI Drive Broadcast Panel',
+          status: 'pending_joni',
+          updatedAt: new Date().toISOString()
+        };
+
+        // Write document to 'joni_outbox' collection in Firestore
+        await addDoc(outboxRef, payload);
+        successCount++;
+        
+        // Minor delay between writes for robust Firestore processing
+        await new Promise(resolve => setTimeout(resolve, 350));
+      }
+
+      setBroadcastStatus(null);
+      setBroadcastMessage('');
+      setBroadcastMediaUrl('');
+      setSelectedCustomerIds([]);
+      setImportSuccess(`השידור המרוכז הושלם בהצלחה! ${successCount} הודעות נרשמו ב-joni_outbox עבור מערכת JONI.`);
+      setTimeout(() => setImportSuccess(null), 5000);
+    } catch (err: any) {
+      console.error('Broadcast failure:', err);
+      setBroadcastError('ארעה שגיאה במהלך השידור המרוכז. אנא ודא הרשאות אבטחת מידע וגישה לקולקציית joni_outbox.');
+      try {
+        handleFirestoreError(err, OperationType.CREATE, 'joni_outbox');
+      } catch (fErr) {
+        // Suppress nested bubble-up if log is enough
+      }
+    } finally {
+      setIsBroadcasting(false);
+    }
+  };
+
   const filteredGoogleContacts = googleContacts.filter((c) => {
     const term = (contactsSearchTerm || '').toLowerCase();
     return (c.name || '').toLowerCase().includes(term) || (c.phone || '').toLowerCase().includes(term);
@@ -333,6 +416,17 @@ export default function AdminPanel({ isOpen, onClose, chats, onImportContact, on
 
         {/* Tab menu selector (iOS Style) */}
         <div className="flex border-b border-gray-100 bg-gray-50/70 px-6 gap-2 shrink-0 select-none">
+          <button
+            onClick={() => setAdminTab('broadcast')}
+            className={`py-3 px-4 text-xs font-bold border-b-2 transition-all cursor-pointer flex items-center gap-1.5 ${
+              adminTab === 'broadcast' 
+                ? 'border-[#007AFF] text-[#007AFF]' 
+                : 'border-transparent text-gray-500 hover:text-gray-750'
+            }`}
+          >
+            <MessageSquare className="w-4 h-4" />
+            שידור הודעה מרוכזת (Broadcast) 📢
+          </button>
           <button
             onClick={() => setAdminTab('stats')}
             className={`py-3 px-4 text-xs font-bold border-b-2 transition-all cursor-pointer flex items-center gap-1.5 ${
@@ -627,6 +721,235 @@ export default function AdminPanel({ isOpen, onClose, chats, onImportContact, on
                       ))
                     )}
                   </div>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : adminTab === 'broadcast' ? (
+          <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0" dir="rtl">
+            {/* RIGHT SIDE: Selected customers checklist (45%) */}
+            <div className="w-full md:w-[45%] border-l border-gray-100 flex flex-col bg-slate-50/50">
+              <div className="p-4 border-b border-gray-100">
+                <span className="text-xs font-bold text-[#007AFF] block uppercase mb-2 select-none">
+                  בחירת נמענים לשידור מרוכז ({eligibleCustomers.length})
+                </span>
+                
+                {/* Search / Selection Controls */}
+                <div className="flex flex-col gap-3">
+                  <div className="relative">
+                    <Search className="absolute right-3 top-2.5 w-4 h-4 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="חפש לקוח לפי שם או טלפון..."
+                      value={broadcastSearchTerm}
+                      onChange={(e) => setBroadcastSearchTerm(e.target.value)}
+                      className="w-full bg-white pr-9 pl-3 py-1.5 rounded-xl text-xs border border-gray-200 focus:outline-none focus:ring-1 focus:ring-[#007AFF]"
+                    />
+                  </div>
+                  
+                  {/* Quick toggle selectors */}
+                  <div className="flex justify-between items-center bg-gray-100/50 p-2 rounded-lg">
+                    <span className="text-[11px] text-gray-500 font-medium">
+                      נבחרו {selectedCustomerIds.length} מתוך {eligibleCustomers.length} נמענים
+                    </span>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const allIds = eligibleCustomers.map(c => c.id);
+                          setSelectedCustomerIds(allIds);
+                        }}
+                        className="text-[10px] text-[#007AFF] hover:underline font-bold cursor-pointer bg-transparent border-0"
+                      >
+                        בחר הכל
+                      </button>
+                      <span className="text-gray-300">|</span>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedCustomerIds([])}
+                        className="text-[10px] text-red-500 hover:underline font-bold cursor-pointer bg-transparent border-0"
+                      >
+                        בטל הכל
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Scrollable Customer List */}
+              <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2">
+                {eligibleCustomers
+                  .filter(c => {
+                    const term = broadcastSearchTerm.toLowerCase();
+                    return c.name.toLowerCase().includes(term) || (c.phoneNumber && c.phoneNumber.includes(term));
+                  })
+                  .map(cust => {
+                    const isChecked = selectedCustomerIds.includes(cust.id);
+                    const hasPhone = !!cust.phoneNumber;
+                    return (
+                      <div 
+                        key={cust.id}
+                        onClick={() => {
+                          if (!hasPhone) return;
+                          if (isChecked) {
+                            setSelectedCustomerIds(prev => prev.filter(id => id !== cust.id));
+                          } else {
+                            setSelectedCustomerIds(prev => [...prev, cust.id]);
+                          }
+                        }}
+                        className={`flex items-center justify-between p-3.5 rounded-xl border transition-all ${
+                          !hasPhone 
+                            ? 'opacity-55 cursor-not-allowed bg-gray-100/30 border-gray-200'
+                            : isChecked 
+                              ? 'bg-white border-[#007AFF] shadow-xs cursor-pointer' 
+                              : 'bg-white/60 border-gray-100 hover:border-gray-250 hover:bg-white cursor-pointer'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 text-right">
+                          <input 
+                            type="checkbox" 
+                            disabled={!hasPhone}
+                            checked={isChecked}
+                            onChange={() => {}} // handled by div click
+                            className="w-4 h-4 text-[#007AFF] rounded border-gray-300 focus:ring-[#007AFF]" 
+                          />
+                          <img 
+                            src={cust.avatar || undefined} 
+                            alt={cust.name} 
+                            className="w-9 h-9 rounded-full object-cover border border-gray-100 font-sans"
+                            referrerPolicy="no-referrer"
+                          />
+                          <div>
+                            <p className="text-xs font-bold text-gray-800 leading-tight">{cust.name}</p>
+                            <p className="text-[10px] text-gray-500 font-mono mt-1">{cust.phoneNumber || 'אין מספר טלפון להפצה'}</p>
+                          </div>
+                        </div>
+
+                        {cust.isOnline && (
+                          <span className="text-[9px] bg-green-50 text-green-700 px-2 py-0.5 rounded-full font-medium">
+                            מחובר לח. סבן
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })
+                }
+              </div>
+            </div>
+
+            {/* LEFT SIDE: Broadcast drafting and submission (55%) */}
+            <div className="flex-1 flex flex-col bg-white overflow-y-auto p-6 text-right">
+              <span className="text-[10px] font-bold text-[#007AFF] block uppercase mb-1 font-mono">
+                כתיבה וניסוח שידור וואטסאפ (WhatsApp Broadcast)
+              </span>
+              <h3 className="text-[15px] font-extrabold text-gray-950 flex items-center gap-2 mb-4">
+                <MessageSquare className="w-4 h-4 text-[#007AFF]" />
+                הודעה חדשה להפצה ישירה
+              </h3>
+
+              {isBroadcasting ? (
+                <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-gray-50/50 rounded-2xl border border-gray-100">
+                  <Loader2 className="w-12 h-12 text-[#007AFF] animate-spin mb-4" />
+                  <h4 className="text-sm font-bold text-gray-900">{broadcastStatus}</h4>
+                  <p className="text-xs text-gray-500 mt-2 max-w-sm">
+                    נועה משדרת את ההודעות לקולקציית joni_outbox בדיירקטורי המרכזי של Firestore. התהליך מתבצע באופן מאובטח.
+                  </p>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-4">
+                  {/* Notification Bar */}
+                  <AnimatePresence>
+                    {importSuccess && (
+                      <motion.div 
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="bg-green-50 border border-green-100 text-green-700 p-3 h-auto rounded-xl text-xs font-semibold text-center flex items-center justify-center gap-2 mb-2"
+                      >
+                        <Sparkles className="w-4 h-4 text-green-500 shrink-0" />
+                        <span>{importSuccess}</span>
+                      </motion.div>
+                    )}
+                    {broadcastError && (
+                      <motion.div 
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="bg-red-50 border border-red-100 text-red-700 p-3.5 rounded-xl text-xs font-semibold flex items-center gap-2"
+                      >
+                        <ShieldAlert className="w-4 h-4 text-red-500 shrink-0" />
+                        <span>{broadcastError}</span>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  {/* Message Input info */}
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1.5 select-none">
+                      תוכן הודעת הוואטסאפ:
+                    </label>
+                    <textarea
+                      rows={6}
+                      value={broadcastMessage}
+                      onChange={(e) => setBroadcastMessage(e.target.value)}
+                      placeholder="הקלד כאן את תוכן ההודעה המרוכזת לשידור... למשל: 'שלום, כאן נועה ממשרד ח. סבן. ברצוננו לתאם מולכם הזמנה חדשה...'"
+                      className="w-full bg-slate-50 border border-gray-200 rounded-xl p-3 text-xs focus:outline-none focus:ring-1 focus:ring-[#007AFF] focus:bg-white resize-none"
+                    />
+                  </div>
+
+                  {/* Attachment config block */}
+                  <div className="border border-gray-150/80 bg-gray-50/50 p-4 rounded-xl flex flex-col gap-3.5">
+                    <h4 className="text-xs font-bold text-gray-800 flex items-center gap-1.5 select-none">
+                      <Sparkles className="w-3.5 h-3.5 text-blue-500" />
+                      צירוף קובץ מדיה (אופציונלי):
+                    </h4>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[10px] text-gray-500 mb-1">סוג מדיה:</label>
+                        <select
+                          value={broadcastMediaType}
+                          onChange={(e: any) => setBroadcastMediaType(e.target.value)}
+                          className="w-full bg-white border border-gray-200 rounded-lg p-2 text-xs focus:outline-none"
+                        >
+                          <option value="text">הודעת טקסט רגילה</option>
+                          <option value="image">תמונה (Image)</option>
+                          <option value="doc">מסמך / PDF (Document)</option>
+                          <option value="voice">הודעה קולית (Voice)</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] text-gray-500 mb-1">קישור ישיר למדיה (Media URL):</label>
+                        <input
+                          type="url"
+                          value={broadcastMediaUrl}
+                          onChange={(e) => setBroadcastMediaUrl(e.target.value)}
+                          placeholder="https://example.com/image.jpg"
+                          className="w-full bg-white border border-gray-200 rounded-lg p-2 text-xs focus:outline-none focus:ring-1 focus:ring-[#007AFF]"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Warning and Guidance notes */}
+                  <div className="bg-[#007AFF]/5 border border-[#007AFF]/10 p-3.5 rounded-xl text-[11px] text-[#007AFF] leading-relaxed">
+                    <p className="font-bold text-[#007AFF] mb-0.5">💡 הנחיות עבודה מנהלתית (נועה):</p>
+                    <p>
+                      לחיצה על כפתור השידור תיצור רשומות ייעודיות בקולקציית <strong>joni_outbox</strong> בסטטוס <strong>pending_joni</strong>. 
+                      תוסף הוואטסאפ (JONI Client) יאסוף את ההודעות ויזריק אותן לרשת המובייל באופן אוטומטי ללא התערבות ידנית נוספת.
+                    </p>
+                  </div>
+
+                  {/* Submission Action Button */}
+                  <button
+                    type="button"
+                    onClick={handleSendBroadcast}
+                    disabled={selectedCustomerIds.length === 0}
+                    className="w-full bg-[#007AFF] hover:bg-[#005ecb] text-white py-3.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition-transform active:scale-95 shadow-md shadow-[#007AFF]/10 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none select-none mt-2"
+                  >
+                    <span>שגר שידור מרוכז ל-{selectedCustomerIds.length} לקוחות 🚀</span>
+                  </button>
                 </div>
               )}
             </div>

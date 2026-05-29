@@ -48,6 +48,7 @@ interface ChatWindowProps {
   chats: Chat[];
   onOpenAdmin: () => void;
   onTogglePinChat?: (id: string) => void;
+  readReceiptsEnabled?: boolean;
 }
 
 export default function ChatWindow({
@@ -61,6 +62,7 @@ export default function ChatWindow({
   chats,
   onOpenAdmin,
   onTogglePinChat,
+  readReceiptsEnabled = true,
 }: ChatWindowProps) {
   const [inputText, setInputText] = useState('');
   const { getNoaAnalysis } = useNoaBrain();
@@ -139,58 +141,6 @@ export default function ChatWindow({
     }
   }, [chat?.messages?.length, chat?.isTyping]);
 
-  if (!chat) {
-    return (
-      <div className="flex-1 bg-[#f8f9fa] flex flex-col items-center justify-center p-8 border-r border-[#e9edef] text-center select-none" dir="rtl">
-        <div className="max-w-md flex flex-col items-center justify-center gap-6 mt-[-40px]">
-          <div className="w-[280px] h-[190px] flex items-center justify-center relative mb-2">
-            <svg viewBox="0 0 440 290" fill="none" className="text-[#aebac1] w-full h-full">
-              <path d="M220 50C130 50 60 110 60 180C60 210 70 240 90 260L75 295C75 295 105 290 120 282C150 295 185 300 220 300C310 300 380 240 380 180C380 110 310 50 220 50Z" stroke="currentColor" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round"/>
-              <circle cx="200" cy="180" r="12" fill="currentColor"/>
-              <path d="M240 180H310" stroke="currentColor" strokeWidth="12" strokeLinecap="round"/>
-              <path d="M130 140H310" stroke="currentColor" strokeWidth="12" strokeLinecap="round"/>
-            </svg>
-          </div>
-          <h1 className="text-[32px] font-light text-[#41525d] select-none leading-none">מערכת תפעול - ח. סבן</h1>
-          <p className="text-[#667781] text-sm leading-relaxed max-w-sm mt-1">
-            המערכת מסונכרנת בזמן אמת. בחר שיחה מהתפריט כדי לצפות בהזמנות, דוחות או לשלוח הודעות מתוזמנות.
-          </p>
-        </div>
-        <div className="absolute bottom-10 text-[12px] text-[#8696a0] flex items-center gap-1">
-          <Lock className="w-3.5 h-3.5" />
-          <span>מאובטח ומוצפן. פותח עבור ראמי</span>
-        </div>
-      </div>
-    );
-  }
-
-  // פונקציה להעלאת קבצים אמיתית ל-Firebase Storage
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, mediaType: 'image' | 'doc') => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    setIsUploading(true);
-    try {
-      const { ref, uploadBytes, getDownloadURL } = await import('firebase/storage');
-      const fileRef = ref(storage, `chats/${chat.id}/${Date.now()}_${file.name}`);
-      
-      console.log('Uploading file to Firebase Storage path:', fileRef.fullPath);
-      await uploadBytes(fileRef, file);
-      
-      const downloadUrl = await getDownloadURL(fileRef);
-      console.log('Successfully uploaded and retrieved download URL:', downloadUrl);
-      
-      // שליחת הודעה עם הקישור האמיתי לקובץ
-      onSendMessage(chat.id, file.name, mediaType === 'image' ? 'image' : 'text', downloadUrl);
-    } catch (error: any) {
-      console.error('Failed to upload file to Firebase Storage:', error);
-      alert(`שגיאה בהעלאת קובץ: ${error.message || 'אנא ודא שחיבור ה-Firebase תקין והגדרות ה-CORS מאושרות'}`);
-    } finally {
-      setIsUploading(false);
-      event.target.value = '';
-    }
-  };
-
   // פונקציית הורדה בטוחה עם Firebase Storage וגלישה לפולבק למניעת קריסה
   const handleDownloadFile = useCallback(async (url?: string, filename: string = 'file') => {
     if (!url) {
@@ -260,7 +210,60 @@ export default function ChatWindow({
     }
   }, []);
 
+  if (!chat) {
+    return (
+      <div className="flex-1 bg-[#f8f9fa] flex flex-col items-center justify-center p-8 border-r border-[#e9edef] text-center select-none" dir="rtl">
+        <div className="max-w-md flex flex-col items-center justify-center gap-6 mt-[-40px]">
+          <div className="w-[280px] h-[190px] flex items-center justify-center relative mb-2">
+            <svg viewBox="0 0 440 290" fill="none" className="text-[#aebac1] w-full h-full">
+              <path d="M220 50C130 50 60 110 60 180C60 210 70 240 90 260L75 295C75 295 105 290 120 282C150 295 185 300 220 300C310 300 380 240 380 180C380 110 310 50 220 50Z" stroke="currentColor" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round"/>
+              <circle cx="200" cy="180" r="12" fill="currentColor"/>
+              <path d="M240 180H310" stroke="currentColor" strokeWidth="12" strokeLinecap="round"/>
+              <path d="M130 140H310" stroke="currentColor" strokeWidth="12" strokeLinecap="round"/>
+            </svg>
+          </div>
+          <h1 className="text-[32px] font-light text-[#41525d] select-none leading-none">מערכת תפעול - ח. סבן</h1>
+          <p className="text-[#667781] text-sm leading-relaxed max-w-sm mt-1">
+            המערכת מסונכרנת בזמן אמת. בחר שיחה מהתפריט כדי לצפות בהזמנות, דוחות או לשלוח הודעות מתוזמנות.
+          </p>
+        </div>
+        <div className="absolute bottom-10 text-[12px] text-[#8696a0] flex items-center gap-1">
+          <Lock className="w-3.5 h-3.5" />
+          <span>מאובטח ומוצפן. פותח עבור ראמי</span>
+        </div>
+      </div>
+    );
+  }
+
+  // פונקציה להעלאת קבצים אמיתית ל-Firebase Storage
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, mediaType: 'image' | 'doc') => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const { ref, uploadBytes, getDownloadURL } = await import('firebase/storage');
+      const fileRef = ref(storage, `chats/${chat.id}/${Date.now()}_${file.name}`);
+      
+      console.log('Uploading file to Firebase Storage path:', fileRef.fullPath);
+      await uploadBytes(fileRef, file);
+      
+      const downloadUrl = await getDownloadURL(fileRef);
+      console.log('Successfully uploaded and retrieved download URL:', downloadUrl);
+      
+      // שליחת הודעה עם הקישור האמיתי לקובץ
+      onSendMessage(chat.id, file.name, mediaType === 'image' ? 'image' : 'text', downloadUrl);
+    } catch (error: any) {
+      console.error('Failed to upload file to Firebase Storage:', error);
+      alert(`שגיאה בהעלאת קובץ: ${error.message || 'אנא ודא שחיבור ה-Firebase תקין והגדרות ה-CORS מאושרות'}`);
+    } finally {
+      setIsUploading(false);
+      event.target.value = '';
+    }
+  };
+
   // שדרוג 1: פונקציית שליחה מותאמת לפרוטוקול JONI
+
   const handleSend = () => {
     if (!inputText.trim()) return;
     
@@ -469,6 +472,7 @@ export default function ChatWindow({
                   setMessageToForward={setMessageToForward}
                   setForwardSentMap={setForwardSentMap}
                   setForwardSearchQuery={setForwardSearchQuery}
+                  readReceiptsEnabled={readReceiptsEnabled}
                 />
               </div>
             )}

@@ -12,6 +12,7 @@ import { sendJoniMessage, db } from './lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { saveUserLocally } from './lib/storageUtils';
 import { useNoaBrain } from './hooks/useNoaBrain';
+import OrdersBoardTab from './components/OrdersBoardTab';
 
 export default function App() {
   const { getNoaAnalysis } = useNoaBrain();
@@ -35,6 +36,7 @@ export default function App() {
   const [sidebarSearchTerm, setSidebarSearchTerm] = useState('');
   const [statusViewerOpen, setStatusViewerOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<'chat' | 'orders'>('chat');
 
   // Helper to sync single chat to the correct Firestore collection (chats / internal_team_chats)
   const syncChatToFirestore = async (chat: Chat) => {
@@ -673,7 +675,10 @@ export default function App() {
                 dir="rtl"
                 chats={filteredChats}
                 activeChatId={activeChatId}
-                onSelectChat={setActiveChatId}
+                onSelectChat={(id) => {
+                  setActiveChatId(id);
+                  setViewMode('chat');
+                }}
                 currentUser={currentUser}
                 statuses={statuses}
                 onOpenStatus={() => setStatusViewerOpen(true)}
@@ -685,26 +690,32 @@ export default function App() {
                 searchTerm={sidebarSearchTerm}
                 onSearchChange={setSidebarSearchTerm}
                 readReceiptsEnabled={readReceiptsEnabled}
+                viewMode={viewMode}
+                onViewModeChange={setViewMode}
               />
             </div>
           )}
 
           {/* CHAT SCREEN ACTIVE AREA - Hidden on mobile if no chat is active */}
-          {(!isMobile || activeChatId !== null) && (
+          {(!isMobile || activeChatId !== null || viewMode === 'orders') && (
             <div className="flex-1 h-full flex flex-col relative bg-[#efeae2]">
-              <ChatWindow 
-                dir="rtl"
-                chat={activeChat}
-                onSendMessage={handleSendMessage}
-                currentUser={currentUser}
-                wallpaperTheme={wallpaperTheme}
-                onBackToMenu={() => setActiveChatId(null)}
-                onDeleteChat={handleDeleteChatCompletely}
-                chats={chats}
-                onOpenAdmin={() => setIsAdminOpen(true)}
-                onTogglePinChat={handleTogglePinChat}
-                readReceiptsEnabled={readReceiptsEnabled}
-              />
+              {viewMode === 'orders' ? (
+                <OrdersBoardTab />
+              ) : (
+                <ChatWindow 
+                  dir="rtl"
+                  chat={activeChat}
+                  onSendMessage={handleSendMessage}
+                  currentUser={currentUser}
+                  wallpaperTheme={wallpaperTheme}
+                  onBackToMenu={() => setActiveChatId(null)}
+                  onDeleteChat={handleDeleteChatCompletely}
+                  chats={chats}
+                  onOpenAdmin={() => setIsAdminOpen(true)}
+                  onTogglePinChat={handleTogglePinChat}
+                  readReceiptsEnabled={readReceiptsEnabled}
+                />
+              )}
             </div>
           )}
 

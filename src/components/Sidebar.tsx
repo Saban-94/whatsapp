@@ -15,7 +15,8 @@ import {
   VolumeX,
   PlusSquare,
   Lock,
-  ListTodo
+  ListTodo,
+  LayoutDashboard
 } from 'lucide-react';
 import { Chat, UserProfile, StatusStory } from '../types';
 
@@ -35,6 +36,8 @@ interface SidebarProps {
   onSearchChange: (val: string) => void;
   dir: 'rtl' | 'ltr';
   readReceiptsEnabled?: boolean;
+  viewMode: 'chat' | 'orders';
+  onViewModeChange: (mode: 'chat' | 'orders') => void;
 }
 
 export default function Sidebar({
@@ -52,7 +55,9 @@ export default function Sidebar({
   searchTerm,
   onSearchChange,
   dir,
-  readReceiptsEnabled = true
+  readReceiptsEnabled = true,
+  viewMode,
+  onViewModeChange
 }: SidebarProps) {
   const [showDropdown, setShowDropdown] = useState(false);
 
@@ -168,6 +173,19 @@ export default function Sidebar({
 
         {/* Action Controls */}
         <div className="flex items-center gap-5 text-[#54656f]">
+          {/* Live Orders Board Trigger */}
+          <button 
+            onClick={() => onViewModeChange(viewMode === 'chat' ? 'orders' : 'chat')}
+            className={`p-1.5 rounded-full cursor-pointer transition-colors border-0 flex items-center justify-center ${
+              viewMode === 'orders' 
+                ? 'bg-[#00a884]/15 text-[#00a884] shadow-xs' 
+                : 'hover:bg-[#d9dbd9]/60 text-amber-600 hover:text-amber-700'
+            }`}
+            title="סידור עבודה ולוח הזמנות חי"
+          >
+            <LayoutDashboard className="w-5.5 h-5.5" />
+          </button>
+
           {/* Tasks Trigger */}
           <button 
             onClick={onOpenTasks}
@@ -214,6 +232,13 @@ export default function Sidebar({
                 {/* Backdrop overlay to close dropdown safely */}
                 <div className="fixed inset-0 z-10" onClick={() => setShowDropdown(false)} />
                 <div className="absolute left-0 mt-2.5 w-52 bg-white rounded-lg shadow-xl py-1.5 z-20 border border-gray-100 text-right text-sm">
+                  <button 
+                    onClick={() => { onViewModeChange(viewMode === 'chat' ? 'orders' : 'chat'); setShowDropdown(false); }}
+                    className="w-full text-right px-4 py-2.5 hover:bg-gray-50 flex items-center gap-3 text-emerald-600 font-semibold bg-transparent border-b border-gray-100 cursor-pointer"
+                  >
+                    <LayoutDashboard className="w-4 h-4 text-[#00a884]" />
+                    <span>{viewMode === 'chat' ? 'סידור עבודה חי 🏗️' : 'שיחות מסנג׳ר 💬'}</span>
+                  </button>
                   <button 
                     onClick={() => { onOpenNewChat(); setShowDropdown(false); }}
                     className="w-full text-right px-4 py-2.5 hover:bg-gray-50 flex items-center gap-3 text-gray-700 font-normal bg-transparent border-0 cursor-pointer"

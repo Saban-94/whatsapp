@@ -345,7 +345,7 @@ export default function OrdersBoardTab({
   // Controls
   const [selectedOrderForOverlay, setSelectedOrderForOverlay] = useState<Order | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all'); // 'all', 'active' (default requested active), or individual statuses
+  const [activeFilter, setActiveFilter] = useState<string>('active'); // 'active' is default, supports 'all', 'pending', 'in_progress', 'delivered', etc.
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -579,12 +579,37 @@ export default function OrdersBoardTab({
 
   // Filter & Search Logic
   const filteredOrders = orders.filter(order => {
-    // 1. Status Filter
-    if (statusFilter === 'active') {
-      // "שהסטטוס שלהן פעיל" (Requested active status represents non-completed or fully handled)
-      if (order.status === 'delivered' || order.status === 'cancelled') return false;
-    } else if (statusFilter !== 'all' && order.status !== statusFilter) {
-      return false;
+    // 1. Unified Filter
+    switch (activeFilter) {
+      case 'active':
+        if (order.status === 'delivered' || order.status === 'cancelled') return false;
+        break;
+      case 'pending':
+        // filter the array where driverId is empty or status is 'pending' before mapping
+        if (order.driverId !== '' && order.status !== 'pending') return false;
+        break;
+      case 'in_progress':
+        if (order.status !== 'preparing' && order.status !== 'ready' && order.status !== 'on_the_way') return false;
+        break;
+      case 'delivered':
+        if (order.status !== 'delivered') return false;
+        break;
+      case 'preparing':
+        if (order.status !== 'preparing') return false;
+        break;
+      case 'ready':
+        if (order.status !== 'ready') return false;
+        break;
+      case 'on_the_way':
+        if (order.status !== 'on_the_way') return false;
+        break;
+      case 'cancelled':
+        if (order.status !== 'cancelled') return false;
+        break;
+      case 'all':
+      default:
+        // 'all' doesn't restrict by status
+        break;
     }
 
     // 2. Search Text
@@ -665,41 +690,74 @@ export default function OrdersBoardTab({
 
         {/* Dynamic Bento Box Metrics */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
-          <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-4 rounded-xl border border-gray-150 shadow-2xs">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-gray-500">הזמנות פעילות</span>
-              <span className="p-1.5 bg-gray-200/50 text-gray-700 rounded-lg text-xs font-bold leading-none">היום</span>
+          
+          {/* Card 1: Active Orders */}
+          <button
+            onClick={() => setActiveFilter('active')}
+            className={`text-right w-full p-4 rounded-xl shadow-2xs transition-all duration-200 hover:scale-[1.01] hover:shadow-xs active:scale-[0.99] border cursor-pointer flex flex-col justify-between ${
+              activeFilter === 'active'
+                ? 'bg-slate-800 text-white border-slate-700 ring-2 ring-slate-500/30'
+                : 'bg-gradient-to-br from-gray-50 to-gray-100/80 hover:from-gray-100 text-gray-800 border-gray-200'
+            }`}
+          >
+            <div className="w-full flex items-center justify-between">
+              <span className={`text-xs font-bold ${activeFilter === 'active' ? 'text-gray-300' : 'text-gray-500'}`}>הזמנות פעילות</span>
+              <span className={`p-1.5 rounded-lg text-[10px] font-bold leading-none ${activeFilter === 'active' ? 'bg-white/10 text-white' : 'bg-gray-200/50 text-gray-700'}`}>היום</span>
             </div>
-            <div className="text-2xl font-bold text-gray-900 mt-2 font-mono">{activeOrdersCount}</div>
-            <div className="text-[10px] text-gray-400 mt-1">לא כולל מסירות סופיות וביטולים</div>
-          </div>
+            <div className={`text-2xl font-extrabold mt-2 font-mono ${activeFilter === 'active' ? 'text-white' : 'text-gray-900'}`}>{activeOrdersCount}</div>
+            <div className={`text-[10px] mt-1 ${activeFilter === 'active' ? 'text-gray-300' : 'text-gray-400'}`}>לא כולל מסירות סופיות וביטולים</div>
+          </button>
 
-          <div className="bg-gradient-to-br from-amber-50 to-amber-100/30 p-4 rounded-xl border border-amber-150 shadow-2xs">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-amber-700">ממתין לשיבוץ</span>
-              <span className="p-1.5 bg-amber-100 text-amber-800 rounded-lg text-xs font-bold leading-none">דחוף</span>
+          {/* Card 2: Pending Assign (No driver or status 'pending') */}
+          <button
+            onClick={() => setActiveFilter('pending')}
+            className={`text-right w-full p-4 rounded-xl shadow-2xs transition-all duration-200 hover:scale-[1.01] hover:shadow-xs active:scale-[0.99] border cursor-pointer flex flex-col justify-between ${
+              activeFilter === 'pending'
+                ? 'bg-amber-500 text-white border-amber-400 ring-2 ring-amber-500/30'
+                : 'bg-gradient-to-br from-amber-50 to-amber-100/30 hover:from-amber-100/40 text-amber-900 border-amber-200'
+            }`}
+          >
+            <div className="w-full flex items-center justify-between">
+              <span className={`text-xs font-bold ${activeFilter === 'pending' ? 'text-amber-100' : 'text-amber-700'}`}>ממתין לשיבוץ</span>
+              <span className={`p-1.5 rounded-lg text-[10px] font-bold leading-none ${activeFilter === 'pending' ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-800'}`}>דחוף</span>
             </div>
-            <div className="text-2xl font-bold text-amber-900 mt-2 font-mono">{pendingCount}</div>
-            <div className="text-[10px] text-amber-600/80 mt-1">הזמנות הזקוקות לשיוך נהג</div>
-          </div>
+            <div className={`text-2xl font-extrabold mt-2 font-mono ${activeFilter === 'pending' ? 'text-white' : 'text-amber-900'}`}>{pendingCount}</div>
+            <div className={`text-[10px] mt-1 ${activeFilter === 'pending' ? 'text-amber-100' : 'text-amber-600/80'}`}>הזמנות הזקוקות לשיוך נהג</div>
+          </button>
 
-          <div className="bg-gradient-to-br from-blue-50 to-indigo-50/45 p-4 rounded-xl border border-blue-150 shadow-2xs">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-blue-700">בטיפול פעיל</span>
-              <span className="p-1.5 bg-blue-100 text-blue-800 rounded-lg text-xs font-bold leading-none">תהליך</span>
+          {/* Card 3: Active Preparation or Route */}
+          <button
+            onClick={() => setActiveFilter('in_progress')}
+            className={`text-right w-full p-4 rounded-xl shadow-2xs transition-all duration-200 hover:scale-[1.01] hover:shadow-xs active:scale-[0.99] border cursor-pointer flex flex-col justify-between ${
+              activeFilter === 'in_progress'
+                ? 'bg-blue-600 text-white border-blue-500 ring-2 ring-blue-500/30'
+                : 'bg-gradient-to-br from-blue-50 to-indigo-50/45 hover:from-blue-100/30 text-blue-900 border-blue-150'
+            }`}
+          >
+            <div className="w-full flex items-center justify-between">
+              <span className={`text-xs font-bold ${activeFilter === 'in_progress' ? 'text-blue-100' : 'text-blue-700'}`}>בטיפול פעיל</span>
+              <span className={`p-1.5 rounded-lg text-[10px] font-bold leading-none ${activeFilter === 'in_progress' ? 'bg-white/20 text-white' : 'bg-blue-100 text-blue-800'}`}>תהליך</span>
             </div>
-            <div className="text-2xl font-bold text-blue-900 mt-2 font-mono">{inProgressCount}</div>
-            <div className="text-[10px] text-blue-600/80 mt-1">בהכנה, מוכן ונהגים בדרכים</div>
-          </div>
+            <div className={`text-2xl font-extrabold mt-2 font-mono ${activeFilter === 'in_progress' ? 'text-white' : 'text-blue-900'}`}>{inProgressCount}</div>
+            <div className={`text-[10px] mt-1 ${activeFilter === 'in_progress' ? 'text-blue-100' : 'text-blue-600/80'}`}>בהכנה, מוכן ונהגים בדרכים</div>
+          </button>
 
-          <div className="bg-gradient-to-br from-emerald-50 to-emerald-100/30 p-4 rounded-xl border border-emerald-150 shadow-2xs">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-emerald-700">סופקו בהצלחה</span>
-              <span className="p-1.5 bg-emerald-100 text-emerald-800 rounded-lg text-xs font-bold leading-none">בוצע</span>
+          {/* Card 4: Fully Delivered */}
+          <button
+            onClick={() => setActiveFilter('delivered')}
+            className={`text-right w-full p-4 rounded-xl shadow-2xs transition-all duration-200 hover:scale-[1.01] hover:shadow-xs active:scale-[0.99] border cursor-pointer flex flex-col justify-between ${
+              activeFilter === 'delivered'
+                ? 'bg-[#00a884] text-white border-emerald-600 ring-2 ring-[#00a884]/30'
+                : 'bg-gradient-to-br from-emerald-50 to-emerald-100/30 hover:from-emerald-100/40 text-emerald-950 border-emerald-150'
+            }`}
+          >
+            <div className="w-full flex items-center justify-between">
+              <span className={`text-xs font-bold ${activeFilter === 'delivered' ? 'text-emerald-100' : 'text-emerald-700'}`}>סופקו בהצלחה</span>
+              <span className={`p-1.5 rounded-lg text-[10px] font-bold leading-none ${activeFilter === 'delivered' ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-800'}`}>בוצע</span>
             </div>
-            <div className="text-2xl font-bold text-emerald-950 mt-2 font-mono">{deliveredCount}</div>
-            <div className="text-[10px] text-emerald-600/80 mt-1">סחורות שנפרקו בהצלחה בשטח</div>
-          </div>
+            <div className={`text-2xl font-extrabold mt-2 font-mono ${activeFilter === 'delivered' ? 'text-white' : 'text-emerald-950'}`}>{deliveredCount}</div>
+            <div className={`text-[10px] mt-1 ${activeFilter === 'delivered' ? 'text-emerald-100' : 'text-emerald-600/80'}`}>סחורות שנפרקו בהצלחה בשטח</div>
+          </button>
         </div>
       </div>
 
@@ -731,9 +789,9 @@ export default function OrdersBoardTab({
           <Filter className="w-4 h-4 text-gray-400 shrink-0 ml-1.5" />
           
           <button 
-            onClick={() => setStatusFilter('all')} 
+            onClick={() => setActiveFilter('all')} 
             className={`px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-all shrink-0 border-0 ${
-              statusFilter === 'all' 
+              activeFilter === 'all' 
                 ? 'bg-[#111b21] text-white shadow-xs' 
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
@@ -742,9 +800,9 @@ export default function OrdersBoardTab({
           </button>
 
           <button 
-            onClick={() => setStatusFilter('active')} 
+            onClick={() => setActiveFilter('active')} 
             className={`px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-all shrink-0 border-0 ${
-              statusFilter === 'active' 
+              activeFilter === 'active' 
                 ? 'bg-[#00a884] text-white shadow-xs' 
                 : 'bg-emerald-50 text-[#00a884] hover:bg-emerald-100/60'
             }`}
@@ -753,9 +811,9 @@ export default function OrdersBoardTab({
           </button>
 
           <button 
-            onClick={() => setStatusFilter('pending')} 
+            onClick={() => setActiveFilter('pending')} 
             className={`px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-all shrink-0 border-0 ${
-              statusFilter === 'pending' 
+              activeFilter === 'pending' 
                 ? 'bg-amber-100 text-amber-900 border border-amber-200 font-semibold' 
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
@@ -764,9 +822,9 @@ export default function OrdersBoardTab({
           </button>
 
           <button 
-            onClick={() => setStatusFilter('preparing')} 
+            onClick={() => setActiveFilter('preparing')} 
             className={`px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-all shrink-0 border-0 ${
-              statusFilter === 'preparing' 
+              activeFilter === 'preparing' 
                 ? 'bg-blue-100 text-blue-900 border border-blue-200 font-semibold' 
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
@@ -775,9 +833,9 @@ export default function OrdersBoardTab({
           </button>
 
           <button 
-            onClick={() => setStatusFilter('ready')} 
+            onClick={() => setActiveFilter('ready')} 
             className={`px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-all shrink-0 border-0 ${
-              statusFilter === 'ready' 
+              activeFilter === 'ready' 
                 ? 'bg-purple-100 text-purple-900 border border-purple-200 font-semibold' 
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
@@ -786,9 +844,9 @@ export default function OrdersBoardTab({
           </button>
 
           <button 
-            onClick={() => setStatusFilter('on_the_way')} 
+            onClick={() => setActiveFilter('on_the_way')} 
             className={`px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-all shrink-0 border-0 ${
-              statusFilter === 'on_the_way' 
+              activeFilter === 'on_the_way' 
                 ? 'bg-cyan-100 text-cyan-900 border border-cyan-200 font-semibold' 
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
@@ -797,9 +855,9 @@ export default function OrdersBoardTab({
           </button>
 
           <button 
-            onClick={() => setStatusFilter('delivered')} 
+            onClick={() => setActiveFilter('delivered')} 
             className={`px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-all shrink-0 border-0 ${
-              statusFilter === 'delivered' 
+              activeFilter === 'delivered' 
                 ? 'bg-emerald-100 text-emerald-900 border border-emerald-200 font-semibold' 
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
@@ -808,9 +866,9 @@ export default function OrdersBoardTab({
           </button>
 
           <button 
-            onClick={() => setStatusFilter('cancelled')} 
+            onClick={() => setActiveFilter('cancelled')} 
             className={`px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-all shrink-0 border-0 ${
-              statusFilter === 'cancelled' 
+              activeFilter === 'cancelled' 
                 ? 'bg-rose-100 text-rose-900 border border-rose-200 font-semibold' 
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
@@ -852,7 +910,7 @@ export default function OrdersBoardTab({
           </motion.div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            <AnimatePresence mode="popLayout">
+            <AnimatePresence>
               {filteredOrders.map((order) => (
                 <OrderCardComponent
                   key={order.id}

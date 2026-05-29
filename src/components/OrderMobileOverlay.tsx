@@ -54,23 +54,25 @@ export default function OrderMobileOverlay({
     };
   }, [isOpen]);
 
-  if (!order) return null;
-
-  // Edit states
+  // Edit states - declared unconditionally to ensure standard React lifecycle rules apply
   const [isEditing, setIsEditing] = useState(false);
-  const [editedStatus, setEditedStatus] = useState(order.status);
-  const [editedDriverId, setEditedDriverId] = useState(order.driverId || '');
-  const [editedEta, setEditedEta] = useState(order.eta || '');
-  const [editedItems, setEditedItems] = useState(order.items || '');
+  const [editedStatus, setEditedStatus] = useState(order?.status || 'pending');
+  const [editedDriverId, setEditedDriverId] = useState(order?.driverId || '');
+  const [editedEta, setEditedEta] = useState(order?.eta || '');
+  const [editedItems, setEditedItems] = useState(order?.items || '');
   const [isSaving, setIsSaving] = useState(false);
 
   // Keep internal states in sync if order prop changes
   useEffect(() => {
-    setEditedStatus(order.status);
-    setEditedDriverId(order.driverId || '');
-    setEditedEta(order.eta || '');
-    setEditedItems(order.items || '');
+    if (order) {
+      setEditedStatus(order.status);
+      setEditedDriverId(order.driverId || '');
+      setEditedEta(order.eta || '');
+      setEditedItems(order.items || '');
+    }
   }, [order]);
+
+  if (!order) return null;
 
   const getStatusLabel = (status: string) => {
     switch (status) {

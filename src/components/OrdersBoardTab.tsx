@@ -83,16 +83,16 @@ function OrderCardComponent({
   getStatusColors,
   getStatusLabel
 }: any) {
-  const [animateTrigger, setAnimateTrigger] = useState(false);
+  const [isFlipping, setIsFlipping] = useState(false);
   const [prevStatus, setPrevStatus] = useState(order.status);
 
   useEffect(() => {
     if (order.status !== prevStatus) {
-      setAnimateTrigger(true);
+      setIsFlipping(true);
       setPrevStatus(order.status);
       const timer = setTimeout(() => {
-        setAnimateTrigger(false);
-      }, 1200);
+        setIsFlipping(false);
+      }, 600);
       return () => clearTimeout(timer);
     }
   }, [order.status, prevStatus]);
@@ -119,40 +119,21 @@ function OrderCardComponent({
       key={order.id}
       id={`order-card-${order.id}`}
       initial={{ opacity: 0, y: 15 }}
-      style={{ perspective: 1200 }}
-      animate={animateTrigger ? {
-        scale: [1, 1.04, 1.04, 1],
-        rotateX: [0, -8, 8, 0],
-        rotateY: [0, 5, -5, 0],
-        boxShadow: [
-          "0 1px 3px 0 rgba(0,0,0,0.1), 0 1px 2px 0 rgba(0,0,0,0.06)",
-          `0 0 0 5px ${glow}, 0 20px 25px -5px rgba(0,0,0,0.15)`,
-          `0 0 0 5px ${glow}, 0 20px 25px -5px rgba(0,0,0,0.15)`,
-          "0 1px 3px 0 rgba(0,0,0,0.1), 0 1px 2px 0 rgba(0,0,0,0.06)"
-        ],
-        outline: [
-          "2.5px solid transparent",
-          `2.5px solid ${glow}`,
-          `2.5px solid ${glow}`,
-          "2.5px solid transparent"
-        ],
-        zIndex: 20
-      } : {
-        opacity: 1,
-        y: 0,
-        scale: 1,
-        rotateX: 0,
-        rotateY: 0,
-        boxShadow: "0 1px 3px 0 rgba(0,0,0,0.1), 0 1px 2px 0 rgba(0,0,0,0.06)",
-        outline: "2.5px solid transparent",
-        zIndex: 1
-      }}
       exit={{ opacity: 0, scale: 0.95 }}
-      transition={{
-        duration: 1.1,
-        ease: "easeInOut"
+      style={{
+        perspective: '1200px',
+        transformStyle: 'preserve-3d',
+        transition: 'transform 500ms cubic-bezier(0.4, 0, 0.2, 1), box-shadow 500ms ease-in-out, outline 500ms ease-in-out',
+        transform: isFlipping ? 'rotateY(360deg)' : 'rotateY(0deg)',
+        boxShadow: isFlipping 
+          ? `0 0 0 5px ${glow}, 0 20px 25px -5px rgba(0,0,0,0.15)`
+          : "0 1px 3px 0 rgba(0,0,0,0.1), 0 1px 2px 0 rgba(0,0,0,0.06)",
+        outline: isFlipping
+          ? `2.5px solid ${glow}`
+          : "2.5px solid transparent",
+        zIndex: isFlipping ? 20 : 1
       }}
-      className={`bg-white rounded-2xl border ${colors.border} shadow-sm hover:shadow-lg hover:border-gray-300 transition-all duration-300 flex flex-col overflow-hidden relative ${
+      className={`bg-white rounded-2xl border ${colors.border} shadow-sm hover:shadow-lg hover:border-gray-300 flex flex-col overflow-hidden relative ${
         isItemUpdating ? 'opacity-60 pointer-events-none' : ''
       }`}
     >

@@ -140,6 +140,9 @@ export function useNoaBrain() {
   const getNoaAnalysis = async (userInput: string): Promise<string> => {
     const inputClean = userInput.trim().toLowerCase();
     
+    // זיהוי לקוחות שהוזכרו בהודעה באופן פשוט וחסין
+    const mentionedCustomers = customers.filter(c => c.name && inputClean.includes(c.name.toLowerCase()));
+
     // שליפת כלל הלקוחות במאגר
     if (inputClean.includes('טבלת לקוחות') || inputClean.includes('רשימת לקוחות') || inputClean.includes('כל הלקוחות')) {
       if (customers.length === 0) {
@@ -153,6 +156,13 @@ export function useNoaBrain() {
 
     // ניהול שליפת לקוחות לפי שם
     if (inputClean.includes('לקוח') || inputClean.includes('כתובת') || inputClean.includes('טלפון')) {
+      if (mentionedCustomers.length > 0) {
+        const customersFormat = mentionedCustomers.map(c => 
+          `👤 לקוח: ${c.name}\n📍 כתובת: ${c.address}\n📞 טלפון: ${c.phoneNumber}\nאיש קשר: ${c.contactPerson}\nמספר לקוח במערכת: ${c.customerNumber}\nסה"כ הזמנות היסטוריות: ${c.totalOrders}\n------------------------`
+        ).join('\n');
+        return `*נועה AI - נתוני לקוחות מתוך המאגר* 🏢\n\n${customersFormat}\n_סונכרן מול קולקציית customers_`;
+      }
+
       const searchTerms = inputClean.split(' ');
       const matchedCustomers = customers.filter(c => 
         searchTerms.some(term => term.length > 2 && (c.name || '').toLowerCase().includes(term))
@@ -170,6 +180,27 @@ export function useNoaBrain() {
 
     // ניהול שליפת הזמנות
     if (inputClean.includes('הזמנ') || inputClean.includes('משלוח') || inputClean.includes('אספק') || inputClean.includes('טרקינג')) {
+      // אם הוזכר לקוח ספציפי, נבצע הצלבה
+      if (mentionedCustomers.length > 0) {
+        const c = mentionedCustomers[0];
+        const clientOrders = orders.filter(o => 
+          o.customerName && (
+            o.customerName.toLowerCase().includes(c.name.toLowerCase()) || 
+            c.name.toLowerCase().includes(o.customerName.toLowerCase())
+          )
+        );
+
+        if (clientOrders.length === 0) {
+          return `📦 *נועה AI - היסטוריית הזמנות ללקוח* \n\nסרקתי את מצבת הסידור וכרגע אין הזמנות פתוחות או פעילות עבור *${c.name}*.\nעם זאת, מבדיקה במאגר הלקוחות, ללקוח זה קיימות סה"כ *${c.totalOrders}* הזמנות היסטוריות במערכת.`;
+        } else {
+          const activeOrdsFormat = clientOrders.map(o => {
+            return `📦 הזמנה #${o.orderNumber} | לקוח: ${o.customerName}\n📍 יעד: ${o.destination} | ⏰ שעה: ${o.time} | 📅 תאריך: ${o.date}\n🚚 נהג: ${o.driverId} | 🏢 יציאה מ: ${o.warehouse}\n🛒 תכולה: ${o.items}\nסטטוס: *${o.status}*\n_מזהה מעקב: ${o.trackingId}_\n------------------------`;
+          }).join('\n');
+          return `*נועה AI - הזמנות פעילות עבור לקוח ${c.name}* 🏗️\n\n${activeOrdsFormat}\n\n_הנתונים מסונכרנים בזמן אמת מול קולקציית Firestore_`;
+        }
+      }
+
+      // שליפה כללית של הזמנות פעילות כשלא הוזכר לקוח ספציפי
       if (orders.length === 0) {
         return `*נועה AI - סטטוס הזמנות* 🏗️\n\nסרקתי את המאגר וכרגע אין הזמנות פעילות במערכת.`;
       }

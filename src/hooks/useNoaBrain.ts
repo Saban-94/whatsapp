@@ -323,7 +323,7 @@ export function useNoaBrain() {
           ? `*נועה AI - הזמנות פעילות תואמות לחיפוש* 🏗️` 
           : `*נועה AI - דוח הזמנות פעיל ומפורט של ח. סבן* 🏗️`;
 
-        return `${title}\n\n${activeOrdsFormat}\n\n_הנתונים מסונכרנים בזמן אמת מול קולקציית Firestore_`;
+        return `${title}\n\n${activeOrdsFormat}\n\n_הנתונים מסונכרנים בזמן אמת מול קולקציית`;
       }
 
       // אם אין התאמה או שאין נתונים ב-Firestore, נפנה לגיליון 'Order_Tracking' דרך fetchFromGoogleSheets

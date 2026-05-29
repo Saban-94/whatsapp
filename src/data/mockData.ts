@@ -4,7 +4,7 @@ export const currentUserProfile: UserProfile = {
   name: 'ראמי אהובי סבן',
   avatar: 'https://i.postimg.cc/BZBHJ7WN/final-cinematic.jpg',
   status: 'מנהל מערכת ח. סבן',
-  phoneNumber: '+972 50-123-4567',
+  phoneNumber: '+972 50-886-1080',
 };
 
 export const initialChats: Chat[] = [

@@ -6,6 +6,7 @@ import {
   updateDoc 
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import OrderMobileOverlay from './OrderMobileOverlay';
 import { 
   Clock, 
   MapPin, 
@@ -81,7 +82,8 @@ function OrderCardComponent({
   handleUpdateStatus,
   getDriverName,
   getStatusColors,
-  getStatusLabel
+  getStatusLabel,
+  onOpenOverlay
 }: any) {
   const [isFlipping, setIsFlipping] = useState(false);
   const [prevStatus, setPrevStatus] = useState(order.status);
@@ -168,7 +170,11 @@ function OrderCardComponent({
       </div>
 
       {/* Customer & Destination Details Section */}
-      <div className="p-5 flex-1 flex flex-col gap-4">
+      <div 
+        className="p-5 flex-1 flex flex-col gap-4 cursor-pointer hover:bg-slate-50/45 active:scale-[0.99] transition-all" 
+        onClick={() => onOpenOverlay && onOpenOverlay(order)}
+        title="לחץ לצפייה מורחבת ופעולות AI 🌿"
+      >
         
         {/* Customer contact card */}
         <div className="flex items-start gap-3">
@@ -182,6 +188,7 @@ function OrderCardComponent({
             {order.customerPhone && (
               <a 
                 href={`tel:${order.customerPhone}`}
+                onClick={(e) => e.stopPropagation()}
                 className="inline-flex items-center gap-1.5 text-xs text-[#00a884] font-medium hover:underline mt-0.5"
               >
                 <Phone className="w-3 h-3" />
@@ -241,6 +248,13 @@ function OrderCardComponent({
             <Clock className="w-3.5 h-3.5 text-gray-400" />
             {order.time || 'עסקים רגיל'}
           </span>
+        </div>
+
+        {/* Dynamic button indicator for mobile overlay */}
+        <div className="mt-2 pt-2 border-t border-dashed border-gray-250 flex justify-center shrink-0">
+          <div className="w-full py-2 bg-[#00a884]/5 hover:bg-[#00a884]/15 text-[#00a884] rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 border border-[#00a884]/10">
+            <span>👀 פרטים מלאים ועוזרת AI 🌿</span>
+          </div>
         </div>
       </div>
 
@@ -315,12 +329,13 @@ function OrderCardComponent({
   );
 }
 
-export default function OrdersBoardTab() {
+export default function OrdersBoardTab({ onOpenNoaChat }: { onOpenNoaChat?: (order: Order) => void }) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loading, setLoading] = useState(true);
   
   // Controls
+  const [selectedOrderForOverlay, setSelectedOrderForOverlay] = useState<Order | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all'); // 'all', 'active' (default requested active), or individual statuses
   const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -433,6 +448,40 @@ export default function OrdersBoardTab() {
     } catch (err: any) {
       console.error('Failed to update driver:', err);
       showToast('❌ שגיאה בשיבוץ הנהג: ודא שיש לך הרשאות מתאימות במערכת');
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const handleUpdateEta = async (orderId: string, newEta: string) => {
+    setUpdatingId(orderId);
+    try {
+      const orderRef = doc(db, 'orders', orderId);
+      await updateDoc(orderRef, {
+        eta: newEta,
+        updatedAt: new Date().toISOString()
+      });
+      showToast(`השעה המשוערת (ETA) עודכנה ל-${newEta || 'ללא הגדרה'} בהצלחה!`);
+    } catch (err: any) {
+      console.error('Failed to update ETA:', err);
+      showToast('❌ שגיאה בעדכון ETA: ודא שיש לך הרשאות מתאימות במערכת');
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const handleUpdateItems = async (orderId: string, newItems: string) => {
+    setUpdatingId(orderId);
+    try {
+      const orderRef = doc(db, 'orders', orderId);
+      await updateDoc(orderRef, {
+        items: newItems,
+        updatedAt: new Date().toISOString()
+      });
+      showToast('תכולת ופריטי ההזמנה עודכנו במערכת בהצלחה!');
+    } catch (err: any) {
+      console.error('Failed to update items:', err);
+      showToast('❌ שגיאה בעדכון הפריטים: ודא שיש לך הרשאות מתאימות במערכת');
     } finally {
       setUpdatingId(null);
     }
@@ -793,12 +842,29 @@ export default function OrdersBoardTab() {
                   getDriverName={getDriverName}
                   getStatusColors={getStatusColors}
                   getStatusLabel={getStatusLabel}
+                  onOpenOverlay={(ord: Order) => setSelectedOrderForOverlay(ord)}
                 />
               ))}
             </AnimatePresence>
           </div>
         )}
       </div>
+
+      {/* Floating Modern Mobile Overlay Bottom Sheet Detail Card */}
+      <OrderMobileOverlay
+        isOpen={selectedOrderForOverlay !== null}
+        onClose={() => setSelectedOrderForOverlay(null)}
+        order={selectedOrderForOverlay}
+        drivers={drivers}
+        onUpdateStatus={handleUpdateStatus}
+        onUpdateDriver={handleUpdateDriver}
+        onUpdateEta={handleUpdateEta}
+        onUpdateItems={handleUpdateItems}
+        onOpenNoaChat={(ord) => {
+          setSelectedOrderForOverlay(null);
+          if (onOpenNoaChat) onOpenNoaChat(ord);
+        }}
+      />
     </div>
   );
 }

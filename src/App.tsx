@@ -37,6 +37,7 @@ export default function App() {
   const [statusViewerOpen, setStatusViewerOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'chat' | 'orders'>('chat');
+  const [prefilledMessage, setPrefilledMessage] = useState<string>('');
 
   // Helper to sync single chat to the correct Firestore collection (chats / internal_team_chats)
   const syncChatToFirestore = async (chat: Chat) => {
@@ -273,6 +274,16 @@ export default function App() {
       });
     }
   }, [activeChatId]);
+
+  const handleOpenNoaChat = (order: any) => {
+    // 1. We switch viewMode to 'chat'
+    setViewMode('chat');
+    // 2. We set activeChatId to '1' (Noa's AI chat window)
+    setActiveChatId('1');
+    // 3. Populate prefilled message
+    const msg = `נועה, בנוגע להזמנה #${order.orderNumber} עבור הלקוח ${order.customerName}: `;
+    setPrefilledMessage(msg);
+  };
 
   // Create standard helper to format times
   const getFormattedTime = () => {
@@ -700,7 +711,7 @@ export default function App() {
           {(!isMobile || activeChatId !== null || viewMode === 'orders') && (
             <div className="flex-1 h-full flex flex-col relative bg-[#efeae2]">
               {viewMode === 'orders' ? (
-                <OrdersBoardTab />
+                <OrdersBoardTab onOpenNoaChat={handleOpenNoaChat} />
               ) : (
                 <ChatWindow 
                   dir="rtl"
@@ -714,6 +725,8 @@ export default function App() {
                   onOpenAdmin={() => setIsAdminOpen(true)}
                   onTogglePinChat={handleTogglePinChat}
                   readReceiptsEnabled={readReceiptsEnabled}
+                  prefilledText={prefilledMessage}
+                  onClearPrefilledText={() => setPrefilledMessage('')}
                 />
               )}
             </div>

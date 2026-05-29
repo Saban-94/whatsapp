@@ -11,8 +11,11 @@ import AdminPanel from './components/AdminPanel';
 import { sendJoniMessage, db } from './lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { saveUserLocally } from './lib/storageUtils';
+import { useNoaBrain } from './hooks/useNoaBrain';
 
 export default function App() {
+  const { getNoaAnalysis } = useNoaBrain();
+
   const [chats, setChats] = useState<Chat[]>(() => {
     const saved = localStorage.getItem('whatsapp_clone_chats');
     return saved ? JSON.parse(saved) : initialChats;
@@ -364,7 +367,9 @@ export default function App() {
       let replyText = 'שמעתי אותך! נמשיך לדבר בעברית תוך כמה דקות 👍';
       const lowercaseUserText = text.toLowerCase();
 
-      if (replyingChat.name.includes('אמא')) {
+      if (replyingChat.name.includes('נועה')) {
+        replyText = getNoaAnalysis(text);
+      } else if (replyingChat.name.includes('אמא')) {
         if (lowercaseUserText.includes('שבת') || lowercaseUserText.includes('אוכל')) {
           replyText = 'האוכל כמעט מוכן חמוד שלי! הכנתי לך מנה מיוחדת ועוגת שוקולד 🍰';
         } else if (lowercaseUserText.includes('אורן') || lowercaseUserText.includes('ילדים')) {
@@ -382,8 +387,6 @@ export default function App() {
         const members = ['רועי', 'דודו', 'שירה', 'אבא'];
         const randomMember = members[Math.floor(Math.random() * members.length)];
         replyText = `${randomMember}: סגרנו לגמרי! כולנו מגיעים מחר בערב.`;
-      } else if (replyingChat.name.includes('נועה')) {
-        replyText = 'כן, הסטודיו נקי וממוזג, מחכים לך היום בחמש וחצי 🙌🧘';
       } else if (replyingChat.name.includes('לקוחות') || replyingChat.name.includes('סיבוס')) {
         replyText = 'שירות לקוחות אוטומטי: תודה על פנייתך. נציג אנושי יענה בהקדם.';
       } else {

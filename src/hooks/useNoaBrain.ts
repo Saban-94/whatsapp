@@ -364,7 +364,7 @@ export function useNoaBrain() {
     }
 
     // תשובת ברירת מחדל אסינכרונית
-    return `*הודעת עדכון - ח. סבן* 🏗️\n\n${userInput}\n\n_לכל שאלה ניתן לפנות למשרד._\nsent via JONI`;
+    return `*הודעת עדכון - ח. סבן* 🏗️\n\n${userInput}\n\n_לכל שאלה ניתן לפנות לסידור אהובי ראמי._\`;
   };
 
   return {

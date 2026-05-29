@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   Search, 
   MoreVertical, 
@@ -192,7 +192,7 @@ export default function ChatWindow({
   };
 
   // פונקציית הורדה בטוחה עם Firebase Storage וגלישה לפולבק למניעת קריסה
-  const handleDownloadFile = async (url?: string, filename: string = 'file') => {
+  const handleDownloadFile = useCallback(async (url?: string, filename: string = 'file') => {
     if (!url) {
       console.warn('Cannot download file: URL is empty.');
       return;
@@ -258,7 +258,7 @@ export default function ChatWindow({
         alert(`שגיאת אבטחה (CORS): לא ניתן להוריד את הקובץ ישירות. אנא לחץ לחיצה ימנית על התמונה או הקישור ושמור ידנית.`);
       }
     }
-  };
+  }, []);
 
   // שדרוג 1: פונקציית שליחה מותאמת לפרוטוקול JONI
   const handleSend = () => {
@@ -441,6 +441,8 @@ export default function ChatWindow({
             data={chat.messages}
             alignToBottom={true}
             followOutput="smooth"
+            defaultItemHeight={85}
+            computeItemKey={(index, item) => item.id || String(index)}
             className="flex-1 w-full h-full select-text relative z-1 outline-none font-sans"
             style={{ backgroundColor: getWallpaperBg() }}
             components={{

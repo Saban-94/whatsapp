@@ -140,6 +140,17 @@ export function useNoaBrain() {
   const getNoaAnalysis = async (userInput: string): Promise<string> => {
     const inputClean = userInput.trim().toLowerCase();
     
+    // שליפת כלל הלקוחות במאגר
+    if (inputClean.includes('טבלת לקוחות') || inputClean.includes('רשימת לקוחות') || inputClean.includes('כל הלקוחות')) {
+      if (customers.length === 0) {
+        return `*נועה AI* 🏢\nסרקתי את המאגר וכרגע אין לקוחות רשומים.`;
+      }
+      const allCustomersFormat = customers.map(c => 
+        `👤 *${c.name}* (מס': ${c.customerNumber})\n📍 כתובת: ${c.address}\n📞 טלפון: ${c.phoneNumber}\n------------------------`
+      ).join('\n');
+      return `🏢 *דוח לקוחות פעילים - ח. סבן* 🏢\n\n${allCustomersFormat}`;
+    }
+
     // ניהול שליפת לקוחות לפי שם
     if (inputClean.includes('לקוח') || inputClean.includes('כתובת') || inputClean.includes('טלפון')) {
       const searchTerms = inputClean.split(' ');

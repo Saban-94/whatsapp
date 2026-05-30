@@ -388,31 +388,41 @@ ${editedItems || 'אין פריטים להצגה'}`;
                   
                   {/* Status Selection */}
                   <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/60">
-                    <label className="block text-xs font-bold text-slate-500 mb-1.5">עדכון סטטוס ההזמנה במערכת:</label>
-                    <select
-                      id="status-options-dropdown"
-                      value={editedStatus}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setEditedStatus(val);
-                        if (autoSave) {
-                          triggerAutoSaveWithOverride({ status: val });
-                        }
-                      }}
-                      onBlur={() => {
-                        if (autoSave) {
-                          triggerAutoSaveWithOverride({ status: editedStatus });
-                        }
-                      }}
-                      className="w-full text-sm font-semibold bg-white border border-slate-300 rounded-lg px-3 py-2 focus:ring-1 focus:ring-[#00a884] focus:border-[#00a884]"
-                    >
-                      <option value="pending" className="text-amber-700">⏳ בהמתנה (Pending)</option>
-                      <option value="preparing" className="text-blue-700">🛠️ בהכנה במחסן (Preparing)</option>
-                      <option value="ready" className="text-purple-700">📦 מוכן להעמסה (Ready)</option>
-                      <option value="on_the_way" className="text-cyan-700">🚚 בדרך לשטח (On the way)</option>
-                      <option value="delivered" className="text-emerald-700">✅ נמסר וסופק (Delivered)</option>
-                      <option value="cancelled" className="text-rose-700">❌ מבוטל (Cancelled)</option>
-                    </select>
+                    <label className="block text-xs font-bold text-slate-500 mb-1.5 font-sans">עדכון סטטוס ההזמנה במערכת:</label>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl bg-white border border-slate-200 rounded-lg w-11 h-10 flex items-center justify-center shadow-xs select-none border-dashed border-[#00a884] shrink-0">
+                        {editedStatus === 'pending' && '⏳'}
+                        {editedStatus === 'preparing' && '🛠️'}
+                        {editedStatus === 'ready' && '📦'}
+                        {editedStatus === 'on_the_way' && '🚚'}
+                        {editedStatus === 'delivered' && '✅'}
+                        {editedStatus === 'cancelled' && '❌'}
+                      </span>
+                      <select
+                        id="status-options-dropdown"
+                        value={editedStatus}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setEditedStatus(val);
+                          if (autoSave) {
+                            triggerAutoSaveWithOverride({ status: val });
+                          }
+                        }}
+                        onBlur={() => {
+                          if (autoSave) {
+                            triggerAutoSaveWithOverride({ status: editedStatus });
+                          }
+                        }}
+                        className="w-full text-sm font-semibold bg-white border border-slate-300 rounded-lg px-3 py-2.5 focus:ring-1 focus:ring-[#00a884] focus:border-[#00a884] cursor-pointer"
+                      >
+                        <option value="pending" className="text-amber-700 font-sans">⏳ בהמתנה (Pending)</option>
+                        <option value="preparing" className="text-blue-700 font-sans">🛠️ בהכנה במחסן (Preparing)</option>
+                        <option value="ready" className="text-purple-700 font-sans">📦 מוכן להעמסה (Ready)</option>
+                        <option value="on_the_way" className="text-cyan-700 font-sans">🚚 בדרך לשטח (On the way)</option>
+                        <option value="delivered" className="text-emerald-700 font-sans">✅ נמסר וסופק (Delivered)</option>
+                        <option value="cancelled" className="text-rose-700 font-sans">❌ מבוטל (Cancelled)</option>
+                      </select>
+                    </div>
                   </div>
 
                   {/* Driver Assign Selection */}

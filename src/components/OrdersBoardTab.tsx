@@ -52,7 +52,7 @@ const statusConfig: Record<
   { label: string; color: string; glow: string; icon: React.ReactNode }
 > = {
   pending: {
-    label: "ממתין",
+    label: "ממתינים",
     color: "from-amber-500/20 to-amber-600/10",
     glow: "shadow-amber-500/20",
     icon: <Clock className="w-3.5 h-3.5" />,
@@ -76,7 +76,7 @@ const statusConfig: Record<
     icon: <Truck className="w-3.5 h-3.5" />,
   },
   delivered: {
-    label: "נמסר",
+    label: "סופק ",
     color: "from-emerald-500/20 to-emerald-600/10",
     glow: "shadow-emerald-500/20",
     icon: <Sparkles className="w-3.5 h-3.5" />,

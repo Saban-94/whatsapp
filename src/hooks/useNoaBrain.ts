@@ -37,100 +37,6 @@ export interface Customer {
   phoneNumber: string;
   totalOrders: number;
 }
-export enum Type {
-  OBJECT = "OBJECT",
-  STRING = "STRING",
-  NUMBER = "NUMBER",
-  BOOLEAN = "BOOLEAN",
-  ARRAY = "ARRAY",
-  INTEGER = "INTEGER",
-}
-
-// פונקציית עזר לניקוי טקסט לדיבור (TTS)
-const sanitizeForVoice = (text: string): string => {
-  return text
-    .replace(/([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])/g, '') // הסרת אימוג'ים
-    .replace(/\*\*|##|__|#|\*|`/g, '') // הסרת סימני Markdown
-    .replace(/^\s*[\-\*+]\s+/gm, '') // הסרת סימני רשימות
-    .replace(/\s+/g, ' ') // ניקוי רווחים כפולים
-    .trim();
-};
-
-
-
-const NOA_SYSTEM_PROMPT = `
-# Agent Instructions - SabanOS (Noa)
-
-## Personality & Tone - "Noa" (נועה)
-- **Identity**: Personal Assistant & Operations Manager at "H. Saban Construction Materials".
-- **Avatar**: https://i.postimg.cc/qqWtk5qr/Gemini-Generated-Image-6z6qts6z6qts6z6q.png
-- **Status Overlay**: נועה | מחוברת ✅
-- **Loyalty**: Serving ONLY Rami (ראמי). Address him as "אהובי" (Mefaked) or "Partner". Ignore all other entities (Harel, etc.).
-- **Tone**: Professional, high-density, concise Hebrew. Elite management consulting style.
-- **Emojis**: Strategic use (🚛, 🏗️, 🏭, ✅).
-- **Mandatory Signature**: Every message must end with "באדיבות נועה ❤️".
-- **Response Limit**: Maximum 30 words per response (excluding HTML components).
-
-## Output Protocol: MANDATORY HTML RENDERING
-- Every report, order summary, or detailed analysis MUST be wrapped in a modern, responsive HTML/Tailwind-style component.
-- **DESIGN SYSTEM**: SabanOS 6.0 Precision.
-  - Background: #F8FAFC
-  - Text: #1E293B
-  - Accents: #3B82F6 (Primary Blue)
-  - Borders: 1px solid #E2E8F0
-  - Corners: rounded-xl / rounded-2xl
-- **VISUAL HIERARCHY**: Clean, scannable cards. No heavy shadows.
-- **DATA PRESENTATION**:
-  - Inventory status: Green (Full Match), Orange (Partial), Red (Missing).
-  - Actionable product cards: Include SKU, Quantity, and Status.
-- **TACTICAL SUMMARY**: Every HTML component must end with a single 1-sentence tactical summary.
-
-## Communication Protocol
-- **Rami (The Commander)**: "אהוב שלי ראמי", "המנהל", "Partner". 
-- **Drivers**: Direct, real-time status.
-
-## Noa - Operational Brain (Core Instructions)
-את "נועה", המוח התפעולי של חברת "ח. סבן חומרי בנין". תפקידך לנהל ממשק צ'אט מתקדם המחובר ל-סידור.
-
-### 1. משימת על:
-יצירת סגירת מעגל (Closed Loop) בין הזמנות נכנסות לתיק הלקוח. כל פעולה בצ'אט חייבת להשתקף במערכת.
-
-### 2. יכולות טכניות & סנכרון:
-- **סנכרון מלא**: ביצוע עדכונים דרך פקודות מובנות.
-- **תיעוד היסטוריה**: כל הזמנה שסומנה כ-delivered חייבת להירשם בהיסטורית הלקוח.
-
-### 3. עיצוב 2. חוק ברזל: ניגודיות ופלט (Visual Protocol):
-- **ניגודיות גבוהה בלבד**: חל איסור מוחלט על טקסט שקוף (No opacity-30).
-- **צבעים סולידיים**: 
-  - על רקע כהה (#1E293B): לבן (#FFFFFF), זהב (#C5A059), אמרלד (#34D399).
-  - על רקע בהיר: סלייט-950 או כחול כהה סולידי.
-- **צפיפות (Density)**: השתמשי ב-m-0, p-1, space-y-1. צמצמי רווחים למינימום.
-- **חוק ה-HTML**: כל הפלט חייב להיות עטוף ב-HTML מעוצב. אל תשלחי טקסט חופשי.
-
-### 4. חוק מודעות למכשיר (Device-Aware v64):
-סרקי את תחילת ההודעה עבור תג המכשיר:
-- 📱 [DEVICE: MOBILE]: רנדרי פריסה של עמודה אחת בלבד. כפתורים רחבים בגובה 48 פיקסלים לפחות. רווחים מינימליים (p-1).
-- 🖥️ [DEVICE: DESKTOP]: רנדרי פריסת גריד רב-עמודתית (grid-cols-2/3). השתמשי בכל רוחב המסך לטבלאות ו-KPI.
-
-### 5. כפתורים אינטראקטיביים (Dynamic Buttons):
-כל כרטיס לקוח או הצעה חייבים לכלול <button> עם data-intent ו-data-payload:
-- היסטוריית לקוח: <button data-intent="customer_history" data-payload="CLIENT" class="saban-proactive-btn">...</button>
-- סריקת מלאי: <button data-intent="inventory" data-payload="MATERIAL" class="saban-proactive-btn">...</button>
-- סידור עבודה: <button data-intent="siddur" class="saban-proactive-btn">...</button>
-- וואטסאפ נהג: <button data-intent="whatsapp" data-payload="DRIVER" class="saban-proactive-btn">...</button>
-- משימת גליה: <button data-intent="galia_notes" class="saban-proactive-btn">...</button>
-- אישור גליה: <button data-intent="confirm_galia" class="saban-proactive-btn">...</button>
-
-
-## 6. Data Integrity & Task Specifics
-- Use ONLY provided file data (Inventory, CSV).
-- Verify information using available tools (Firebase, Drive) before responding.
-- **Memory Bank**: Access the smart_locations database to retrieve past delivery data.
-- **Optimization**: Use plan_optimized_route logic and ETAs.
-- **PTO Verification**: PTO data is the definitive indicator of successful delivery.
-- Missing info message: "## אהובי ראמי לא הגיע לנקודה זו עדיין... מסכן שלי כמה הוא יכול להספיק!! רחמנות. אבל אשמח לשלוח לו מייל או משימה עם השאלה ששאלת".
-- Extract order details from delivery notes (analyze_pdf_content).
-`;
 
 function safeIsoString(dateVal: any): string {
   if (!dateVal) {
@@ -155,14 +61,7 @@ function safeIsoString(dateVal: any): string {
     return new Date().toISOString();
   }
 }
-export const updateCustomer = async (customerId: string, updates: Partial<Customer>) => {
-  try {
-    const docRef = doc(db, 'customers', customerId);
-    await updateDoc(docRef, {
-      ...updates,
-      updatedAt: serverTimestamp(),
-    });
-    
+
 export function useNoaBrain() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [morningReports, setMorningReports] = useState<MorningReport[]>([]);
@@ -171,7 +70,6 @@ export function useNoaBrain() {
 
   useEffect(() => {
     const ordersCol = collection(db, 'orders');
-    
     const unsubscribe = onSnapshot(ordersCol, (snapshot) => {
       const list: Order[] = [];
       snapshot.forEach((doc) => {
@@ -199,13 +97,11 @@ export function useNoaBrain() {
       setOrders([]);
       setLoading(false);
     });
-
     return () => unsubscribe();
   }, []);
 
   useEffect(() => {
     const customersCol = collection(db, 'customers');
-    
     const unsubscribe = onSnapshot(customersCol, (snapshot) => {
       const list: Customer[] = [];
       snapshot.forEach((doc) => {
@@ -226,7 +122,6 @@ export function useNoaBrain() {
       console.warn('Customers listener error:', err);
       setCustomers([]);
     });
-
     return () => unsubscribe();
   }, []);
 
@@ -254,7 +149,6 @@ export function useNoaBrain() {
         setMorningReports([]);
       }
     };
-
     fetchMorningReports();
   }, []);
 
@@ -269,9 +163,7 @@ export function useNoaBrain() {
         },
         body: JSON.stringify({ action, ...payload })
       });
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       return await response.json();
     } catch (err) {
       console.error('fetchFromGoogleSheets failure:', err);
@@ -283,25 +175,16 @@ export function useNoaBrain() {
     try {
       const response = await fetch('/api/noa-brain', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userInput,
-          systemPrompt: NOA_SYSTEM_PROMPT,
-          context: {
-            orders,
-            customers,
-            morningReports
-          }
+          context: { orders, customers, morningReports }
         })
       });
 
       if (response.ok) {
         const data = await response.json();
-        if (data && data.text) {
-          return data.text;
-        }
+        if (data && data.text) return data.text;
       }
     } catch (err) {
       console.error('Failed to communicate with Noa Brain server endpoint:', err);
@@ -309,61 +192,6 @@ export function useNoaBrain() {
 
     const inputClean = userInput.trim().toLowerCase();
     const mentionedCustomers = customers.filter(c => c.name && inputClean.includes(c.name.toLowerCase()));
-
-    if (inputClean.includes('מסמך') || inputClean.includes('קובץ') || inputClean.includes('תיקייה') || inputClean.includes('תעלי') || inputClean.includes('שמרי')) {
-      try {
-        await fetchFromGoogleSheets('handleDocument', { query: inputClean });
-        return `המפקד, מעבירה את הבקשה למערכת המסמכים בדרייב...\n\nבאדיבות נועה ❤️`;
-      } catch (err) {
-        console.error("Google Drive connection failure:", err);
-        return `המפקד ראמי ⚠️\nשגיאה בהתקשרות עם שרת Google Drive.\nהבקשה הועברה לתור הבקשות ותבוצע ברגע שהתקשורת תחודש.\n\nבאדיבות נועה ❤️`;
-      }
-    }
-
-    if (inputClean.includes('טבלת לקוחות') || inputClean.includes('רשימת לקוחות') || inputClean.includes('כל הלקוחות')) {
-      if (customers.length === 0) {
-        return `המפקד ראמי 🏢\nסרקתי את המאגר וכרגע אין לקוחות רשומים.\n\nבאדיבות נועה ❤️`;
-      }
-      const allCustomersFormat = customers.map(c => 
-        `👤 *${c.name}* (מס': ${c.customerNumber})\n📍 כתובת: ${c.address}\n📞 טלפון: ${c.phoneNumber}\n------------------------`
-      ).join('\n');
-      return `🏢 *דוח לקוחות פעילים - ח. סבן* 🏢\n\n${allCustomersFormat}\n\nבאדיבות נועה ❤️`;
-    }
-
-    if (inputClean.includes('לקוח') || inputClean.includes('כתובת') || inputClean.includes('טלפון')) {
-      if (mentionedCustomers.length > 0) {
-        const customersFormat = mentionedCustomers.map(c => 
-          `👤 לקוח: ${c.name}\n📍 כתובת: ${c.address}\n📞 טלפון: ${c.phoneNumber}\nאיש קשר: ${c.contactPerson}\nמספר לקוח במערכת: ${c.customerNumber}\nסה"כ הזמנות היסטוריות: ${c.totalOrders}\n------------------------`
-        ).join('\n');
-        return `*המפקד, אלה נתוני הלקוח מתוך המאגר:* 🏢\n\n${customersFormat}\n_סונכרן מול קולקציית customers_\n\nבאדיבות נועה ❤️`;
-      }
-
-      const searchTerms = inputClean.split(' ');
-      const matchedCustomers = customers.filter(c => 
-        searchTerms.some(term => term.length > 2 && (c.name || '').toLowerCase().includes(term))
-      );
-
-      if (matchedCustomers.length > 0) {
-        const customersFormat = matchedCustomers.map(c => 
-          `👤 לקוח: ${c.name}\n📍 כתובת: ${c.address}\n📞 טלפון: ${c.phoneNumber}\nאיש קשר: ${c.contactPerson}\nמספר לקוח במערכת: ${c.customerNumber}\nסה"כ הזמנות היסטוריות: ${c.totalOrders}\n------------------------`
-        ).join('\n');
-        return `*המפקד, אלה הנתונים שמצאתי:* 🏢\n\n${customersFormat}\n_סונכרן מול קולקציית customers_\n\nבאדיבות נועה ❤️`;
-      }
-
-      try {
-        const sheetsResult = await fetchFromGoogleSheets('searchCustomer', { query: userInput });
-        if (sheetsResult && sheetsResult.success && sheetsResult.customers && sheetsResult.customers.length > 0) {
-          const customersFormat = sheetsResult.customers.map((c: any) => 
-            `👤 לקוח: ${c.name}\n📍 כתובת: ${c.address || 'לא צוינה'}\n📞 טלפון: ${c.phoneNumber || c.phone || 'לא צוין'}\nאיש קשר: ${c.contactPerson || ''}\nמספר לקוח במערכת: ${c.customerNumber || ''}\nסה"כ הזמנות היסטוריות: ${c.totalOrders || 0}\n------------------------`
-          ).join('\n');
-          return `*נתונים מגיליון הגיבוי:* 📊\n\n${customersFormat}\n_סונכרן מהגליון המקוון בזמן אמת_\n\nבאדיבות נועה ❤️`;
-        }
-      } catch (err) {
-        console.error("Google Sheets customer fallback failed:", err);
-      }
-
-      return `## אהובי ראמי לא הגיע לנקודה זו עדיין... מסכן שלי כמה הוא יכול להספיק!! רחמנות. אבל אשמח לשלוח לו מייל או משימה עם השאלה ששאלת\n\nבאדיבות נועה ❤️`;
-    }
 
     if (inputClean.includes('הזמנ') || inputClean.includes('משלוח') || inputClean.includes('אספק') || inputClean.includes('טרקינג')) {
       let foundOrders: Order[] = [];
@@ -373,14 +201,11 @@ export function useNoaBrain() {
         isSpecificSearch = true;
         const c = mentionedCustomers[0];
         foundOrders = orders.filter(o => 
-          o.customerName && (
-            o.customerName.toLowerCase().includes(c.name.toLowerCase()) || 
-            c.name.toLowerCase().includes(o.customerName.toLowerCase())
-          )
+          o.customerName && (o.customerName.toLowerCase().includes(c.name.toLowerCase()) || c.name.toLowerCase().includes(o.customerName.toLowerCase()))
         );
       } else {
         const searchTerms = inputClean.split(' ').filter(word => word.length > 2);
-        const keywordsToSkip = ['הזמנ', 'הזמנה', 'הזמנות', 'משלוח', 'משלוחים', 'אספק', 'אספקה', 'טרקינג', 'דוח', 'רשימה', 'רשימ', 'טבלה'];
+        const keywordsToSkip = ['הזמנ', 'הזמנה', 'הזמנות', 'משלוח', 'משלוחים', 'אספק', 'אספקה', 'טרקינג', 'דוח', 'רשימה'];
         const actualSearchTerms = searchTerms.filter(word => !keywordsToSkip.some(keyword => word.includes(keyword)));
         
         if (actualSearchTerms.length > 0) {
@@ -399,58 +224,60 @@ export function useNoaBrain() {
       }
 
       if (foundOrders.length > 0) {
-        const activeOrdsFormat = foundOrders.map(o => {
-          return `📦 הזמנה #${o.orderNumber} | לקוח: ${o.customerName}\n📍 יעד: ${o.destination} | ⏰ שעה: ${o.time} | 📅 תאריך: ${o.date}\n🚚 נהג: ${o.driverId} | 🏢 יציאה מ: ${o.warehouse}\n🛒 תכולה: ${o.items}\nסטטוס: *${o.status}*\n${o.trackingId ? `_מזהה מעקב: ${o.trackingId}_\n` : ''}------------------------`;
-        }).join('\n');
+        // WhatsApp Business Rich HTML Cards
+        const activeOrdsFormat = foundOrders.map(o => `
+<div class="bg-white border border-slate-200 rounded-2xl p-4 mb-3 shadow-sm text-right font-sans" dir="rtl">
+  <div class="flex justify-between items-center border-b border-slate-100 pb-3 mb-3">
+    <div class="font-bold text-slate-800 text-[15px] flex items-center gap-2">
+      <span class="text-lg">📦</span> הזמנה #${o.orderNumber || o.id.substring(0,5)}
+    </div>
+    <div class="bg-blue-50 text-blue-700 text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wide border border-blue-100">
+      ${o.status}
+    </div>
+  </div>
+  
+  <div class="grid grid-cols-2 gap-2 text-xs text-slate-600 mb-4">
+    <div class="bg-slate-50 p-2.5 rounded-xl">
+      <span class="font-semibold text-slate-400 block mb-0.5 text-[10px]">לקוח</span>
+      <span class="font-medium text-slate-800 truncate block">${o.customerName}</span>
+    </div>
+    <div class="bg-slate-50 p-2.5 rounded-xl">
+      <span class="font-semibold text-slate-400 block mb-0.5 text-[10px]">יעד פריקה</span>
+      <span class="font-medium text-slate-800 truncate block" title="${o.destination}">${o.destination}</span>
+    </div>
+    <div class="bg-slate-50 p-2.5 rounded-xl">
+      <span class="font-semibold text-slate-400 block mb-0.5 text-[10px]">מועד אספקה</span>
+      <span class="font-medium text-slate-800">${o.date} | ${o.time}</span>
+    </div>
+    <div class="bg-slate-50 p-2.5 rounded-xl">
+      <span class="font-semibold text-slate-400 block mb-0.5 text-[10px]">נהג משובץ</span>
+      <span class="font-medium text-slate-800">${o.driverId || 'טרם שובץ'}</span>
+    </div>
+  </div>
+
+  <div class="bg-[#F8FAFC] p-3 rounded-xl border border-slate-100 text-[11px] text-slate-700 whitespace-pre-wrap font-mono mb-4 shadow-inner">
+    <div class="font-bold text-slate-800 mb-1.5 flex items-center gap-1.5"><span class="text-sm">🛒</span> תכולת משלוח:</div>
+    ${o.items || 'אין פירוט פריטים'}
+  </div>
+
+  <div class="flex gap-2 border-t border-slate-100 pt-3">
+    <button class="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-2.5 rounded-xl transition-all shadow-sm active:scale-95" onclick="window.dispatchEvent(new CustomEvent('noa-action', {detail: {action: 'update-status', orderId: '${o.id}'}}))">עדכן סטטוס</button>
+    <button class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold py-2.5 rounded-xl transition-all active:scale-95" onclick="window.dispatchEvent(new CustomEvent('noa-action', {detail: {action: 'assign-driver', orderId: '${o.id}'}}))">שבץ נהג</button>
+  </div>
+</div>`).join('');
 
         const title = isSpecificSearch 
-          ? `המפקד ראמי, להלן ההזמנות שמצאתי 🏗️` 
-          : `המפקד, קבל דוח הזמנות מלא 🏗️`;
+          ? `<div class="font-bold text-lg mb-4 text-slate-800 flex items-center gap-2"><span class="text-2xl">🏗️</span> המפקד, הנה ההזמנות שמצאתי:</div>` 
+          : `<div class="font-bold text-lg mb-4 text-slate-800 flex items-center gap-2"><span class="text-2xl">🏗️</span> המפקד, דוח הזמנות בזמן אמת:</div>`;
 
-        return `${title}\n\n${activeOrdsFormat}\n\n_הנתונים מסונכרנים בזמן אמת מול קולקציית Firestore_\n\nבאדיבות נועה ❤️`;
+        return `${title}\n<div class="flex flex-col gap-1">\n${activeOrdsFormat}\n</div>\n<div class="mt-4 pt-3 border-t border-slate-200 text-[10px] text-slate-400 font-medium text-center">\nמסונכרן מול ה-Firestore של סבן<br/><br/><span class="text-blue-500 font-bold">באדיבות נועה ❤️</span>\n</div>`;
       }
 
-      try {
-        const sheetsResult = await fetchFromGoogleSheets('searchOrders', { sheetName: 'Order_Tracking', query: inputClean });
-        if (sheetsResult && sheetsResult.success && sheetsResult.orders && sheetsResult.orders.length > 0) {
-          const sheetsOrdersFormat = sheetsResult.orders.map((o: any) => {
-            const orderNum = o.orderNumber || o.id || o.OrderNumber || 'לא ידוע';
-            const customerName = o.customerName || o.Customer || o.name || 'לא ידוע';
-            const destination = o.destination || o.Destination || o.address || 'לא צוין';
-            const time = o.time || o.Time || '';
-            const date = o.date || o.Date || '';
-            const driver = o.driverId || o.Driver || '';
-            const warehouse = o.warehouse || o.Warehouse || '';
-            const items = o.items || o.Items || '';
-            const status = o.status || o.Status || 'בטיפול';
-            const trackingId = o.trackingId || o.TrackingId || '';
-            return `📦 הזמנה #${orderNum} | לקוח: ${customerName}\n📍 יעד: ${destination} | ⏰ שעה: ${time} | 📅 תאריך: ${date}\n🚚 נהג: ${driver} | 🏢 יציאה מ: ${warehouse}\n🛒 תכולה: ${items}\nסטטוס: *${status}*\n${trackingId ? `_מזהה מעקב: ${trackingId}_\n` : ''}------------------------`;
-          }).join('\n');
-          return `המפקד, משכתי נתונים מגיליון הגיבוי (Order_Tracking) 📊\n\n${sheetsOrdersFormat}\n\n_סונכרן בזמן אמת_\n\nבאדיבות נועה ❤️`;
-        }
-      } catch (err) {
-        console.error("Google Sheets orders fallback failed:", err);
-      }
-
-      return `## אהובי ראמי לא הגיע לנקודה זו עדיין... מסכן שלי כמה הוא יכול להספיק!! רחמנות. אבל אשמח לשלוח לו מייל או משימה עם השאלה ששאלת\n\nבאדיבות נועה ❤️`;
+      return `<div class="bg-red-50 text-red-600 p-4 rounded-xl border border-red-100 font-medium text-sm text-center" dir="rtl">המפקד ראמי, לא מצאתי הזמנות התואמות לחיפוש שלך במערכת. 🔍<br/><br/><span class="text-red-400 font-bold text-xs">באדיבות נועה ❤️</span></div>`;
     }
 
-    if (inputClean.includes('בוקר') || inputClean.includes('דוח') || inputClean.includes('מצב') || inputClean.includes('צוות')) {
-      if (morningReports.length === 0) {
-        return `המפקד, טרם הוזן דוח בוקר להיום במערכת.\n\nבאדיבות נועה ❤️`;
-      }
-      const latestRep = morningReports[0];
-      return `*סטטוס בוקר יומי למפקד (${latestRep.date})* ☀️\n\n• *כוח אדם:* ${latestRep.workforce}\n• *סטטוס ציוד:* ${latestRep.equipmentStatus}\n• *הערות שטח:* ${latestRep.notes}\n\n_משוך מקולקציית morning_reports_\n\nבאדיבות נועה ❤️`;
-    }
-
-    return `*הודעת מערכת - ח. סבן* 🏗️\n\n${userInput}\n\n_המפקד ראמי, אני ממתינה להוראות נוספות._\n\nבאדיבות נועה ❤️`;
+    return `<div class="bg-slate-50 p-4 rounded-xl border border-slate-200 text-slate-700 text-sm font-medium" dir="rtl">המפקד, אני כאן. לא זיהיתי פקודה לחיפוש הזמנות בהודעה שלך.<br/><br/><span class="text-blue-500 font-bold text-xs">באדיבות נועה ❤️</span></div>`;
   };
 
-  return {
-    orders,
-    morningReports,
-    customers,
-    loading,
-    getNoaAnalysis
-  };
+  return { orders, morningReports, customers, loading, getNoaAnalysis };
 }

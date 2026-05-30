@@ -89,14 +89,61 @@ export default function OrderMobileOverlay({
   const [editedEta, setEditedEta] = useState(order?.eta || '');
   const [editedItems, setEditedItems] = useState(order?.items || '');
   const [isSaving, setIsSaving] = useState(false);
+  const [autoSave, setAutoSave] = useState(false);
 
   // Exit safety warning states
   const [pulseSaveBtn, setPulseSaveBtn] = useState(false);
   const [showExitWarning, setShowExitWarning] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
 
+  const triggerAutoSaveWithOverride = async (overrides?: {
+    status?: string;
+    driverId?: string;
+    eta?: string;
+    items?: string;
+  }) => {
+    if (!order) return;
+    const nextStatus = overrides && 'status' in overrides ? overrides.status! : editedStatus;
+    const nextDriverId = overrides && 'driverId' in overrides ? overrides.driverId! : editedDriverId;
+    const nextEta = overrides && 'eta' in overrides ? overrides.eta! : editedEta;
+    const nextItems = overrides && 'items' in overrides ? overrides.items! : editedItems;
+
+    const hasStatusChanged = nextStatus !== order.status;
+    const hasDriverChanged = nextDriverId !== (order.driverId || '');
+    const hasEtaChanged = onUpdateEta && nextEta !== (order.eta || '');
+    const hasItemsChanged = onUpdateItems && nextItems !== (order.items || '');
+
+    if (hasStatusChanged || hasDriverChanged || hasEtaChanged || hasItemsChanged) {
+      setIsSaving(true);
+      try {
+        if (hasStatusChanged) {
+          await onUpdateStatus(order.id, nextStatus);
+        }
+        if (hasDriverChanged) {
+          await onUpdateDriver(order.id, nextDriverId);
+        }
+        if (hasEtaChanged && onUpdateEta) {
+          await onUpdateEta(order.id, nextEta);
+        }
+        if (hasItemsChanged && onUpdateItems) {
+          await onUpdateItems(order.id, nextItems);
+        }
+        setShowExitWarning(false);
+        setPulseSaveBtn(false);
+      } catch (e) {
+        console.error("Auto-save failed in OrderMobileOverlay", e);
+      } finally {
+        setIsSaving(false);
+      }
+    }
+  };
+
   const handleAttemptClose = () => {
     if (isEditing && isDirty) {
+      if (autoSave) {
+        onClose();
+        return;
+      }
       setPulseSaveBtn(true);
       setShowExitWarning(true);
       // reset pulsing look after animation duration
@@ -298,6 +345,28 @@ ${editedItems || 'אין פריטים להצגה'}`;
               {/* Editable Fields or View Fields Details */}
               {isEditing ? (
                 <div className="space-y-4" id="order-mobile-edit-form">
+                  {/* Auto-save checkbox toggle wrapper */}
+                  <div className="flex items-center justify-between bg-emerald-50 text-[#00a884] border border-emerald-100 px-4 py-3 rounded-2xl select-none shadow-xs">
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-lg">⚡</span>
+                      <div className="text-right">
+                        <label htmlFor="auto-save-toggle" className="text-xs font-extrabold text-[#008f6f] block cursor-pointer">
+                          שמירה אוטומטית (Auto-save) 🌿
+                        </label>
+                        <span className="text-[10px] text-emerald-600 block leading-tight mt-0.5">
+                          הנתונים יישמרו אוטומטית ל-Firestore עם יציאה מכל שדה במזכר
+                        </span>
+                      </div>
+                    </div>
+                    <input 
+                      type="checkbox" 
+                      id="auto-save-toggle"
+                      checked={autoSave}
+                      onChange={(e) => setAutoSave(e.target.checked)}
+                      className="w-5 h-5 accent-[#00a884] rounded-md cursor-pointer shrink-0"
+                    />
+                  </div>
+
                   <h3 className="font-extrabold text-[#00a884] text-xs uppercase tracking-wider mb-2">עריכה מהירה של התעודה</h3>
                   
                   {/* Status Selection */}
@@ -305,7 +374,18 @@ ${editedItems || 'אין פריטים להצגה'}`;
                     <label className="block text-xs font-bold text-slate-500 mb-1.5">עדכון סטטוס ההזמנה במערכת:</label>
                     <select
                       value={editedStatus}
-                      onChange={(e) => setEditedStatus(e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setEditedStatus(val);
+                        if (autoSave) {
+                          triggerAutoSaveWithOverride({ status: val });
+                        }
+                      }}
+                      onBlur={() => {
+                        if (autoSave) {
+                          triggerAutoSaveWithOverride({ status: editedStatus });
+                        }
+                      }}
                       className="w-full text-sm font-semibold bg-white border border-slate-300 rounded-lg px-3 py-2 focus:ring-1 focus:ring-[#00a884] focus:border-[#00a884]"
                     >
                       <option value="pending" className="text-amber-700">⏳ בהמתנה (Pending)</option>
@@ -322,7 +402,18 @@ ${editedItems || 'אין פריטים להצגה'}`;
                     <label className="block text-xs font-bold text-slate-500 mb-1.5 font-sans">שיבוץ נהג סיירת או קבלן חיצוני:</label>
                     <select
                       value={editedDriverId}
-                      onChange={(e) => setEditedDriverId(e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setEditedDriverId(val);
+                        if (autoSave) {
+                          triggerAutoSaveWithOverride({ driverId: val });
+                        }
+                      }}
+                      onBlur={() => {
+                        if (autoSave) {
+                          triggerAutoSaveWithOverride({ driverId: editedDriverId });
+                        }
+                      }}
                       className="w-full text-sm bg-white border border-slate-300 rounded-lg px-3 py-2 focus:ring-1 focus:ring-[#00a884] focus:border-[#00a884]"
                     >
                       <option value="">-- טרם שובץ (ללא נהג) --</option>
@@ -341,7 +432,13 @@ ${editedItems || 'אין פריטים להצגה'}`;
                       type="text"
                       value={editedEta}
                       onChange={(e) => setEditedEta(e.target.value)}
-                      onBlur={() => setEditedEta(prev => formatEtaTime(prev))}
+                      onBlur={() => {
+                        const formatted = formatEtaTime(editedEta);
+                        setEditedEta(formatted);
+                        if (autoSave) {
+                          triggerAutoSaveWithOverride({ eta: formatted });
+                        }
+                      }}
                       placeholder="למשל: 14:30, בוקר, תוך שעה"
                       className="w-full text-sm bg-white border border-slate-300 rounded-lg px-3 py-2 font-mono"
                     />
@@ -349,10 +446,15 @@ ${editedItems || 'אין פריטים להצגה'}`;
 
                   {/* Items Description Area */}
                   <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/60">
-                    <label className="block text-xs font-bold text-slate-500 mb-1.5">תכולת הציוד והפריטים המלאה:</label>
+                    <label className="block text-xs font-bold text-slate-500 mb-1.5 font-sans">תכולת הציוד והפריטים המלאה:</label>
                     <textarea
                       value={editedItems}
                       onChange={(e) => setEditedItems(e.target.value)}
+                      onBlur={() => {
+                        if (autoSave) {
+                          triggerAutoSaveWithOverride({ items: editedItems });
+                        }
+                      }}
                       rows={4}
                       placeholder="פירוט הציוד..."
                       className="w-full text-sm bg-white border border-slate-300 rounded-lg px-3 py-2 leading-relaxed"

@@ -98,7 +98,7 @@ function MetricCard({
   const getStylesForLabel = (lbl: string) => {
     const styleMap: Record<string, React.CSSProperties & { fontFamily?: string }> = {
       "כל ההזמנות": { marginLeft: "auto" },
-      "פעילות בשטח": { marginLeft: "auto" },
+      "ממתינים להעמסה": { marginLeft: "auto" },
       "בהכנה": { marginLeft: "auto" },
       "מוכן": {
         marginLeft: "auto",
@@ -257,7 +257,7 @@ function OrderCard({
             <option value="preparing">בהכנה</option>
             <option value="ready">מוכן</option>
             <option value="on_the_way">בדרך</option>
-            <option value="delivered">נמסר</option>
+            <option value="delivered">סופק</option>
             <option value="cancelled">בוטל</option>
           </select>
         </div>
@@ -341,7 +341,7 @@ export default function OrdersBoardTab() {
           {/* KPI Buttons */}
           <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
             <MetricCard label="כל ההזמנות" value={totalCount} icon={<Package className="w-4 h-4" />} active={activeFilter === "all"} onClick={() => setActiveFilter("all")} accentColor="from-gray-500/20 to-gray-600/10" />
-            <MetricCard label="פעילות בשטח" value={totalCount - deliveredCount} icon={<Zap className="w-4 h-4" />} active={activeFilter === "active"} onClick={() => setActiveFilter("active")} accentColor="from-blue-500/20 to-purple-600/10" />
+            <MetricCard label="ממתינים להעמסה" value={totalCount - deliveredCount} icon={<Zap className="w-4 h-4" />} active={activeFilter === "active"} onClick={() => setActiveFilter("active")} accentColor="from-blue-500/20 to-purple-600/10" />
             <MetricCard label="בהכנה" value={preparingCount} icon={<Building className="w-4 h-4 text-cyan-500" />} active={activeFilter === "preparing"} onClick={() => setActiveFilter("preparing")} accentColor="from-cyan-500/20 to-cyan-600/10" />
             <MetricCard label="מוכן" value={readyCount} icon={<CheckCircle className="w-4 h-4 text-purple-500" />} active={activeFilter === "ready"} onClick={() => setActiveFilter("ready")} accentColor="from-purple-500/20 to-purple-600/10" />
             <MetricCard label="נמסר" value={deliveredCount} icon={<Sparkles className="w-4 h-4 text-emerald-500" />} active={activeFilter === "delivered"} onClick={() => setActiveFilter("delivered")} accentColor="from-emerald-500/20 to-emerald-600/10" />

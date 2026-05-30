@@ -94,12 +94,6 @@ export default function OrderMobileOverlay({
   const [showExitWarning, setShowExitWarning] = useState(false);
 
   const handleAttemptClose = () => {
-    const isStatusModified = editedStatus !== order.status;
-    const isDirty = isStatusModified || 
-                    editedDriverId !== order.driverId || 
-                    editedEta !== (order.eta || '') || 
-                    editedItems !== (order.items || '');
-
     if (isEditing && isDirty) {
       setPulseSaveBtn(true);
       setShowExitWarning(true);
@@ -126,6 +120,11 @@ export default function OrderMobileOverlay({
   }, [order]);
 
   if (!order) return null;
+
+  const isDirty = editedStatus !== order.status || 
+                  editedDriverId !== (order.driverId || '') || 
+                  editedEta !== (order.eta || '') || 
+                  editedItems !== (order.items || '');
 
   const getStatusLabel = (status: string) => {
     switch (status) {
@@ -457,13 +456,25 @@ export default function OrderMobileOverlay({
                     <motion.button
                       id="save-changes-btn"
                       onClick={handleSaveChanges}
-                      disabled={isSaving}
-                      animate={pulseSaveBtn ? {
+                      disabled={isSaving || !isDirty}
+                      animate={(isDirty && !isSaving) ? {
+                        scale: [1, 1.02, 1],
+                        boxShadow: [
+                          "0 4px 6px -1px rgba(0, 168, 132, 0.1), 0 2px 4px -1px rgba(0, 168, 132, 0.06)",
+                          "0 10px 15px -3px rgba(0, 168, 132, 0.355), 0 4px 6px -2px rgba(0, 168, 132, 0.15)",
+                          "0 4px 6px -1px rgba(0, 168, 132, 0.1), 0 2px 4px -1px rgba(0, 168, 132, 0.06)"
+                        ]
+                      } : pulseSaveBtn ? {
                         scale: [1, 1.05, 0.95, 1.05, 1],
                         backgroundColor: ["#00a884", "#f59e0b", "#f59e0b", "#00a884"]
                       } : {}}
-                      transition={{ duration: 0.60, repeat: pulseSaveBtn ? 2 : 0 }}
-                      className={`flex-1 disabled:opacity-50 text-white font-bold py-3 rounded-2xl flex items-center justify-center gap-2 shadow-sm cursor-pointer select-none text-sm transition-all ${
+                      transition={isDirty && !isSaving ? {
+                        duration: 1.5,
+                        repeat: Infinity,
+                        repeatType: "reverse" as const,
+                        ease: "easeInOut"
+                      } : { duration: 0.60, repeat: pulseSaveBtn ? 2 : 0 }}
+                      className={`flex-1 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 rounded-2xl flex items-center justify-center gap-2 shadow-sm cursor-pointer select-none text-sm transition-all ${
                         pulseSaveBtn ? 'ring-4 ring-amber-400 bg-amber-500 shadow-md shadow-amber-500/20' : 'bg-[#00a884] hover:bg-[#008f6f]'
                       }`}
                     >

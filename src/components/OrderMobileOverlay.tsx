@@ -19,6 +19,33 @@ import {
 } from 'lucide-react';
 import { Order, Driver } from './OrdersBoardTab';
 
+const formatEtaTime = (val: string): string => {
+  let cleaned = val.trim();
+  if (!cleaned) return cleaned;
+
+  // 1. Check if it's purely digits (3 or 4 digits) e.g., "1430" or "930"
+  if (/^\d{3,4}$/.test(cleaned)) {
+    if (cleaned.length === 3) {
+      cleaned = '0' + cleaned;
+    }
+    return `${cleaned.slice(0, 2)}:${cleaned.slice(2)}`;
+  }
+
+  // 2. Check if it separates hours and minutes with non-digit separators (like . , or space, etc.)
+  // e.g. "14.30", "14,30", "14-30" or "14 30"
+  const separatedMatch = cleaned.match(/^(\d{1,2})[\s.,;:-]+(\d{2})$/);
+  if (separatedMatch) {
+    let hours = separatedMatch[1];
+    const minutes = separatedMatch[2];
+    if (hours.length === 1) {
+      hours = '0' + hours;
+    }
+    return `${hours}:${minutes}`;
+  }
+
+  return cleaned;
+};
+
 interface OrderMobileOverlayProps {
   isOpen: boolean;
   onClose: () => void;
@@ -291,6 +318,7 @@ export default function OrderMobileOverlay({
                       type="text"
                       value={editedEta}
                       onChange={(e) => setEditedEta(e.target.value)}
+                      onBlur={() => setEditedEta(prev => formatEtaTime(prev))}
                       placeholder="למשל: 14:30, בוקר, תוך שעה"
                       className="w-full text-sm bg-white border border-slate-300 rounded-lg px-3 py-2 font-mono"
                     />

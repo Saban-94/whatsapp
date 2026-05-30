@@ -8,11 +8,11 @@ import { ProfileDrawer, NewChatDrawer, SettingsDrawer } from './components/Drawe
 import TasksDrawer from './components/TasksDrawer';
 import { motion, AnimatePresence } from 'motion/react';
 import AdminPanel from './components/AdminPanel';
-import OrdersBoardTab from './components/OrdersBoardTab';
 import { sendJoniMessage, db } from './lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { saveUserLocally } from './lib/storageUtils';
 import { useNoaBrain } from './hooks/useNoaBrain';
+import OrdersBoardTab from './components/OrdersBoardTab';
 
 export default function App() {
   const { getNoaAnalysis } = useNoaBrain();
@@ -36,7 +36,8 @@ export default function App() {
   const [sidebarSearchTerm, setSidebarSearchTerm] = useState('');
   const [statusViewerOpen, setStatusViewerOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
-  const [currentView, setCurrentView] = useState<'chats' | 'orders'>('chats');
+  const [viewMode, setViewMode] = useState<'chat' | 'orders'>('chat');
+  const [prefilledMessage, setPrefilledMessage] = useState<string>('');
 
   // Helper to sync single chat to the correct Firestore collection (chats / internal_team_chats)
   const syncChatToFirestore = async (chat: Chat) => {
@@ -274,6 +275,19 @@ export default function App() {
     }
   }, [activeChatId]);
 
+  const handleOpenNoaChat = (order: any) => {
+    if (!order) return;
+    // 1. We switch viewMode to 'chat'
+    setViewMode('chat');
+    // 2. We set activeChatId to '1' (Noa's AI chat window)
+    setActiveChatId('1');
+    // 3. Populate prefilled message safely
+    const orderNum = order.orderNumber || 'חדשה';
+    const custName = order.customerName || 'לקוח';
+    const msg = `נועה, בנוגע להזמנה #${orderNum} עבור הלקוח ${custName}: `;
+    setPrefilledMessage(msg);
+  };
+
   // Create standard helper to format times
   const getFormattedTime = () => {
     const now = new Date();
@@ -485,7 +499,6 @@ export default function App() {
     const existing = chats.find(c => c.phoneNumber === phone || c.name === name);
     if (existing) {
       setActiveChatId(existing.id);
-      setCurrentView('chats');
       setIsAdminOpen(false);
       return;
     }
@@ -503,7 +516,7 @@ export default function App() {
       messages: [
         {
           id: `new-${newChatId}`,
-          text: `סנכרנת בהצלחה את השיחה with ${name}! מוצפן ומאובטח דרך מערכת JONI 🔒`,
+          text: `סנכרנת בהצלחה את השיחה עם ${name}! מוצפן ומאובטח דרך מערכת JONI 🔒`,
           timestamp: getFormattedTime(),
           isOutgoing: false
         }
@@ -512,7 +525,6 @@ export default function App() {
 
     setChats(prev => [newChatObj, ...prev]);
     setActiveChatId(newChatId);
-    setCurrentView('chats');
     setIsAdminOpen(false);
   };
 
@@ -587,8 +599,8 @@ export default function App() {
         {/* Sidebar and Chat Layout wrapper based on Custom direction order preference */}
         <div className={`w-full h-full flex flex-row ${!isMobile && sidebarPosition === 'left' ? 'flex-row-reverse' : ''}`}>
           
-          {/* LEFT/RIGHT CHAT INDEX PANEL - Hidden on mobile if a chat is active */}
-          {(!isMobile || activeChatId === null) && (
+          {/* LEFT/RIGHT CHAT INDEX PANEL - Hidden on mobile if a chat is active or viewing orders */}
+          {(!isMobile || (activeChatId === null && viewMode === 'chat')) && (
             <div className={`${
               isMobile 
                 ? 'w-full h-full' 
@@ -626,7 +638,6 @@ export default function App() {
                       chats={chats}
                       onSelectChat={(id) => {
                         setActiveChatId(id);
-                        setCurrentView('chats');
                         setActiveDrawer(null);
                       }}
                       onAddNewContact={handleAddNewContact}
@@ -680,7 +691,7 @@ export default function App() {
                 activeChatId={activeChatId}
                 onSelectChat={(id) => {
                   setActiveChatId(id);
-                  setCurrentView('chats');
+                  setViewMode('chat');
                 }}
                 currentUser={currentUser}
                 statuses={statuses}
@@ -693,33 +704,17 @@ export default function App() {
                 searchTerm={sidebarSearchTerm}
                 onSearchChange={setSidebarSearchTerm}
                 readReceiptsEnabled={readReceiptsEnabled}
-                currentView={currentView}
-                onSelectView={setCurrentView}
+                viewMode={viewMode}
+                onViewModeChange={setViewMode}
               />
             </div>
           )}
 
-          {/* CHAT SCREEN ACTIVE AREA / ORDERS BOARD - Hidden on mobile if neither is active */}
-          {(!isMobile || activeChatId !== null || currentView === 'orders') && (
-            <div className="flex-1 h-full flex flex-col relative bg-[#efeae2] overflow-hidden">
-              {currentView === 'orders' ? (
-                <div className="w-full h-full flex flex-col bg-[#F4F6F8] overflow-hidden" id="pwa-orders-board-screen">
-                  {/* PWA Mobile Header */}
-                  {isMobile && (
-                    <div className="bg-white px-5 py-3 border-b border-gray-200 shadow-xs shrink-0 flex items-center justify-between" dir="rtl">
-                      <button
-                        onClick={() => setCurrentView('chats')}
-                        className="text-xs font-bold text-white bg-[#007AFF] hover:bg-[#005ecb] px-3.5 py-1.5 rounded-xl flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-sm shadow-[#007AFF]/15"
-                      >
-                        ← חזרה לצ'אטים
-                      </button>
-                      <span className="text-xs font-extrabold text-slate-900">לוח לוגיסטיקה ח. סבן</span>
-                    </div>
-                  )}
-                  <div className="flex-1 overflow-hidden flex flex-col">
-                    <OrdersBoardTab />
-                  </div>
-                </div>
+          {/* CHAT SCREEN ACTIVE AREA - Hidden on mobile if no chat is active */}
+          {(!isMobile || activeChatId !== null || viewMode === 'orders') && (
+            <div className="flex-1 h-full flex flex-col relative bg-[#efeae2]">
+              {viewMode === 'orders' ? (
+                <OrdersBoardTab onOpenNoaChat={handleOpenNoaChat} onBack={() => setViewMode('chat')} />
               ) : (
                 <ChatWindow 
                   dir="rtl"
@@ -733,6 +728,8 @@ export default function App() {
                   onOpenAdmin={() => setIsAdminOpen(true)}
                   onTogglePinChat={handleTogglePinChat}
                   readReceiptsEnabled={readReceiptsEnabled}
+                  prefilledText={prefilledMessage}
+                  onClearPrefilledText={() => setPrefilledMessage('')}
                 />
               )}
             </div>

@@ -259,6 +259,23 @@ ${editedItems || 'אין פריטים להצגה'}`;
     }
   };
 
+  // Keyboard shortcut listener for Ctrl+S or Cmd+S to save modifications
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        if (isOpen && isEditing && isDirty && !isSaving) {
+          e.preventDefault();
+          handleSaveChanges();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, isEditing, isDirty, isSaving, editedStatus, editedDriverId, editedEta, editedItems, order]);
+
   return (
     <AnimatePresence>
       {isOpen && (

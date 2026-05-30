@@ -10,6 +10,13 @@ import {
 } from 'lucide-react';
 import { Message } from '../types';
 
+const cleanNoaHtml = (text: string): string => {
+  if (!text) return '';
+  let cleaned = text.replace(/```(html|xml)/gi, '');
+  cleaned = cleaned.replace(/```/g, '');
+  return cleaned.trim();
+};
+
 interface MessageBubbleProps {
   msg: Message;
   isGroup: boolean;
@@ -107,6 +114,11 @@ export const MessageBubble = React.memo(({
               <span className={`text-[10px] font-mono ${isOut ? 'text-blue-100' : 'text-gray-500'}`}>{msg.mediaDuration || '0:12'}</span>
             </div>
           </div>
+        ) : (msg.text && (msg.text.includes('<div') || msg.text.includes('<table') || msg.text.includes('<button'))) ? (
+          <div 
+            className="text-[14px] leading-relaxed font-sans text-right"
+            dangerouslySetInnerHTML={{ __html: cleanNoaHtml(msg.text || '') }}
+          />
         ) : (
           <p className="text-[15px] leading-relaxed whitespace-pre-wrap pl-10 pt-0.5 font-sans font-normal">{msg.text}</p>
         )}

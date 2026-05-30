@@ -235,6 +235,13 @@ export function useNoaBrain() {
 
   const getNoaAnalysis = async (userInput: string): Promise<string> => {
     try {
+      const drivers = [
+        { id: 'hezi', name: 'חזי (סיירת)', phone: '054-1111111' },
+        { id: 'sami', name: 'סאמי (מובילים כבדים)', phone: '054-2222222' },
+        { id: 'avi', name: 'אבי (מחסן ותובלה)', phone: '054-3333333' },
+        { id: 'shimon', name: 'שמעון (ג׳וני הובלות)', phone: '054-4444444' }
+      ];
+
       const response = await fetch('/api/noa-brain', {
         method: 'POST',
         headers: {
@@ -246,7 +253,8 @@ export function useNoaBrain() {
           context: {
             orders,
             customers,
-            morningReports
+            morningReports,
+            drivers
           }
         })
       });

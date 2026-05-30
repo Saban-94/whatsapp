@@ -274,7 +274,12 @@ function OrderCard({
 // --- Main App Component ---
 export default function OrdersBoardTab() {
   const [orders, setOrders] = useState<Order[]>([]);
-  const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [drivers, setDrivers] = useState<Driver[]>([
+    { id: 'hezi', name: 'חזי (סיירת)', phone: '054-1111111' },
+    { id: 'sami', name: 'סאמי (מובילים כבדים)', phone: '054-2222222' },
+    { id: 'avi', name: 'אבי (מחסן ותובלה)', phone: '054-3333333' },
+    { id: 'shimon', name: 'שמעון (ג׳וני הובלות)', phone: '054-4444444' }
+  ]);
   const [activeFilter, setActiveFilter] = useState<string>("active");
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [loading, setLoading] = useState(true);

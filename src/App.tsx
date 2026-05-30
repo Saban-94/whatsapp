@@ -134,6 +134,35 @@ export default function App() {
     loadChatsFromFirestore();
   }, []);
 
+  // 1.5. Real-time JONI / Noa Action Event Handler (Firestore update)
+  useEffect(() => {
+    const handleNoaAction = async (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (!customEvent.detail) return;
+      
+      const { action, orderId, field, value } = customEvent.detail;
+      console.log('Received noa-action event in App:', { action, orderId, field, value });
+      
+      if (action === 'update-order' && orderId && field) {
+        try {
+          const { doc, updateDoc } = await import('firebase/firestore');
+          const orderRef = doc(db, 'orders', orderId);
+          const updates: any = { [field]: value, updatedAt: new Date().toISOString() };
+          if (field === 'status' || field === 'driverId') {
+            updates.eta = ''; // Rule of reset: clearing eta on change of status or driver
+          }
+          await updateDoc(orderRef, updates);
+          console.log(`Order ${orderId} successfully updated via Noa's action button command!`);
+        } catch (err) {
+          console.error("Failed to execute order update from Noa's action button:", err);
+        }
+      }
+    };
+
+    window.addEventListener('noa-action', handleNoaAction);
+    return () => window.removeEventListener('noa-action', handleNoaAction);
+  }, []);
+
   // 2. Synchronize any changed chat state to Firestore
   useEffect(() => {
     if (chats && chats.length > 0) {

@@ -1,957 +1,371 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  collection, 
-  onSnapshot, 
-  doc, 
-  updateDoc 
-} from 'firebase/firestore';
-import { db } from '../lib/firebase';
-import OrderMobileOverlay from './OrderMobileOverlay';
-import { 
-  Clock, 
-  MapPin, 
-  User, 
-  Package, 
-  Search, 
-  Filter, 
-  Calendar, 
-  Truck, 
-  CheckCircle2, 
-  AlertCircle, 
-  X, 
-  Phone, 
-  Home, 
-  Layers, 
-  TrendingUp, 
+import React, { useState, useEffect } from "react";
+import { collection, onSnapshot, doc, updateDoc, query, orderBy } from 'firebase/firestore';
+import { db } from '../lib/firebase'; // ודא שהנתיב תואם לפרויקט שלך
+import {
+  Package,
+  Clock,
+  Truck,
+  Plus,
+  CheckCircle,
+  AlertCircle,
+  Calendar,
+  MapPin,
+  Building,
+  Trash2,
+  X,
+  Search,
+  Sparkles,
   RefreshCw,
-  XCircle,
-  AlertTriangle,
-  ArrowRight
-} from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+  SlidersHorizontal,
+  Zap,
+  Navigation,
+  Phone,
+} from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
 
-export interface Order {
+// --- Interfaces ---
+interface Order {
   id: string;
   orderNumber: string;
   customerName: string;
-  customerPhone: string;
-  date: string; 
-  time: string; 
+  customerPhone?: string;
+  date: string;
+  time: string;
   destination: string;
-  items: string; 
+  items: string;
   driverId: string;
   warehouse: string;
-  status: string; // 'pending', 'preparing', 'ready', 'on_the_way', 'delivered', 'cancelled'
-  trackingId?: string;
-  createdAt?: string;
-  updatedAt?: string;
+  status: string;
   eta?: string;
+  updatedAt?: string;
 }
 
-export interface Driver {
+interface Driver {
   id: string;
   name: string;
-  phone: string;
-  active: boolean;
+  phone?: string;
 }
 
-const FALLBACK_DRIVERS = [
-  { id: 'driver_eli', name: 'אלי מנופאי' },
-  { id: 'driver_ramy', name: 'ראמי סבן' },
-  { id: 'driver_herzel', name: 'המנכ"ל הראל' },
-  { id: 'driver_arnon', name: 'ארנון תובלה' },
-  { id: 'driver_yossi', name: 'יוסי ספק מגרש' },
-  { id: 'driver_shimon', name: 'שמעון נהג חיצוני' }
-];
+// --- V0 Status Config ---
+const statusConfig: Record<
+  string,
+  { label: string; color: string; glow: string; icon: React.ReactNode }
+> = {
+  pending: {
+    label: "ממתין",
+    color: "from-amber-500/20 to-amber-600/10",
+    glow: "shadow-amber-500/20",
+    icon: <Clock className="w-3.5 h-3.5" />,
+  },
+  preparing: {
+    label: "בהכנה",
+    color: "from-cyan-500/20 to-cyan-600/10",
+    glow: "shadow-cyan-500/20",
+    icon: <Building className="w-3.5 h-3.5" />,
+  },
+  ready: {
+    label: "מוכן",
+    color: "from-purple-500/20 to-purple-600/10",
+    glow: "shadow-purple-500/20",
+    icon: <CheckCircle className="w-3.5 h-3.5" />,
+  },
+  on_the_way: {
+    label: "בדרך",
+    color: "from-blue-500/20 to-blue-600/10",
+    glow: "shadow-blue-500/20",
+    icon: <Truck className="w-3.5 h-3.5" />,
+  },
+  delivered: {
+    label: "נמסר",
+    color: "from-emerald-500/20 to-emerald-600/10",
+    glow: "shadow-emerald-500/20",
+    icon: <Sparkles className="w-3.5 h-3.5" />,
+  },
+  cancelled: {
+    label: "בוטל",
+    color: "from-red-500/20 to-red-600/10",
+    glow: "shadow-red-500/20",
+    icon: <X className="w-3.5 h-3.5" />,
+  },
+};
 
-interface OrderCardProps {
-  order: Order;
-  updatingId: string | null;
-  drivers: Driver[];
-  handleUpdateDriver: (orderId: string, driverId: string) => void | Promise<void>;
-  handleUpdateStatus: (orderId: string, status: string) => void | Promise<void>;
-  getDriverName: (id: string) => string;
-  getStatusColors: (status: string) => { bg: string; text: string; border: string; badge: string };
-  getStatusLabel: (status: string) => string;
-}
-
-function OrderCard({
-  order,
-  updatingId,
-  drivers,
-  handleUpdateDriver,
-  handleUpdateStatus,
-  getDriverName,
-  getStatusColors,
-  getStatusLabel,
-  onOpenOverlay
-}: any) {
-  const [isFlipping, setIsFlipping] = useState(false);
-  const [prevStatus, setPrevStatus] = useState(order.status);
-
-  useEffect(() => {
-    if (order.status !== prevStatus) {
-      setIsFlipping(true);
-      setPrevStatus(order.status);
-      const timer = setTimeout(() => {
-        setIsFlipping(false);
-      }, 600);
-      return () => clearTimeout(timer);
-    }
-  }, [order.status, prevStatus]);
-
-  const getGlowColor = (status: string) => {
-    switch (status) {
-      case 'pending': return 'rgba(245, 158, 11, 0.6)';
-      case 'preparing': return 'rgba(59, 130, 246, 0.6)';
-      case 'ready': return 'rgba(168, 85, 247, 0.6)';
-      case 'on_the_way':
-      case 'in_transit': return 'rgba(6, 182, 212, 0.6)';
-      case 'delivered': return 'rgba(16, 185, 129, 0.6)';
-      case 'cancelled': return 'rgba(244, 63, 94, 0.6)';
-      default: return 'rgba(0, 168, 132, 0.6)';
-    }
+// --- V0 Metric Card Component ---
+function MetricCard({
+  label, value, icon, active, onClick, accentColor,
+}: {
+  label: string; value: number; icon: React.ReactNode; active: boolean; onClick: () => void; accentColor: string;
+}) {
+  const getStylesForLabel = (lbl: string) => {
+    const styleMap: Record<string, React.CSSProperties & { fontFamily?: string }> = {
+      "כל ההזמנות": { marginLeft: "auto" },
+      "פעילות בשטח": { marginLeft: "auto" },
+      "בהכנה": { marginLeft: "auto" },
+      "מוכן": {
+        marginLeft: "auto",
+        color: "rgba(205, 235, 172, 1)",
+        borderWidth: "1px",
+        borderColor: "rgba(124, 206, 126, 1)",
+        boxShadow: "0 0 0 0 rgba(126, 211, 33, 1)",
+        textShadow: "1px 1px 3px rgba(255, 255, 255, 1)",
+        display: "inline-grid",
+      },
+      "נמסר": {
+        marginLeft: "auto",
+        backgroundColor: "rgba(7, 92, 6, 1)",
+        color: "rgba(255, 255, 255, 1)",
+        fontFamily: "Rubik 80s Fade, display",
+        textShadow: "1px 1px 3px rgba(255, 255, 255, 1)",
+        display: "flex",
+        boxShadow: "0 0 0 0 rgba(219, 19, 19, 0)",
+        fontWeight: "600",
+        borderWidth: "1px",
+        borderColor: "rgba(255, 255, 255, 1)",
+      },
+      "חסר נהג": { marginLeft: "auto" },
+    };
+    return styleMap[lbl] || {};
   };
 
-  const colors = getStatusColors(order.status);
-  const isItemUpdating = updatingId === order.id;
-  const glow = getGlowColor(order.status);
+  const buttonStyles = getStylesForLabel(label);
+
+  return (
+    <motion.button
+      onClick={onClick}
+      whileHover={{ y: -4, scale: 1.02 }}
+      whileTap={{ y: 0, scale: 0.98 }}
+      style={{ ...buttonStyles, opacity: 1 }}
+      className={`relative overflow-hidden rounded-2xl p-4 text-right transition-all duration-300 cursor-pointer border-0
+        ${active ? `bg-gradient-to-br ${accentColor} shadow-lg ring-1 ring-white/20` : "bg-gray-100 hover:bg-gray-200 dark:bg-gray-800"}`}
+    >
+      <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none" />
+      <div className="absolute -top-1/2 -right-1/2 w-full h-full bg-gradient-to-br from-white/10 to-transparent rotate-12 pointer-events-none" />
+      <div className="relative z-10">
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">{label}</span>
+          <div className={`p-1.5 rounded-lg ${active ? "bg-white/20" : "bg-gray-200 dark:bg-gray-700"}`}>
+            {icon}
+          </div>
+        </div>
+        <span className="text-3xl font-black font-mono text-gray-900 dark:text-white block">{value}</span>
+      </div>
+    </motion.button>
+  );
+}
+
+// --- V0 Order Card Component (Connected to Firebase Props) ---
+function OrderCard({
+  order, drivers, onUpdate,
+}: {
+  order: Order; drivers: Driver[]; onUpdate: (id: string, field: keyof Order, value: string) => void;
+}) {
+  const status = statusConfig[order.status] || statusConfig.pending;
+  const assignedDriver = drivers.find((d) => d.id === order.driverId || d.name === order.driverId);
 
   return (
     <motion.div
       layout
-      key={order.id}
-      id={`order-card-${order.id}`}
-      initial={{ opacity: 0, y: 15 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      style={{
-        perspective: '1200px',
-        transformStyle: 'preserve-3d',
-        transition: 'transform 500ms cubic-bezier(0.4, 0, 0.2, 1), box-shadow 500ms ease-in-out, outline 500ms ease-in-out',
-        transform: isFlipping ? 'rotateY(360deg)' : 'rotateY(0deg)',
-        boxShadow: isFlipping 
-          ? `0 0 0 5px ${glow}, 0 20px 25px -5px rgba(0,0,0,0.15)`
-          : "0 1px 3px 0 rgba(0,0,0,0.1), 0 1px 2px 0 rgba(0,0,0,0.06)",
-        outline: isFlipping
-          ? `2.5px solid ${glow}`
-          : "2.5px solid transparent",
-        zIndex: isFlipping ? 20 : 1,
-        ['--glow-color' as any]: glow
-      }}
-      className={`bg-white rounded-2xl border ${colors.border} shadow-sm hover:shadow-lg hover:border-gray-300 flex flex-col overflow-hidden relative ${
-        isItemUpdating ? 'opacity-60 pointer-events-none' : ''
-      } ${isFlipping ? 'status-update-glow' : ''}`}
+      initial={{ opacity: 0, y: 20, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.9, y: -10 }}
+      transition={{ type: "spring", damping: 25, stiffness: 200 }}
+      className="group relative"
     >
-      {/* Status accent top line */}
-      <div className={`h-1.5 w-full ${
-        order.status === 'pending' ? 'bg-amber-400' :
-        order.status === 'preparing' ? 'bg-blue-400' :
-        order.status === 'ready' ? 'bg-purple-400' :
-        (order.status === 'on_the_way' || order.status === 'in_transit') ? 'bg-cyan-400' :
-        order.status === 'delivered' ? 'bg-emerald-400' :
-        'bg-rose-400'
-      }`} />
-
-      {/* Card Content Top Header */}
-      <div className="px-4 md:px-5 py-3 md:py-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
-        <div className="flex items-center gap-1.5">
-          <span className="font-mono text-sm font-bold text-gray-950 bg-white border border-gray-200 px-2.5 py-1 rounded-lg shadow-2xs">
-            {order.orderNumber ? `#${order.orderNumber}` : 'ללא מס׳'}
-          </span>
-          
-          {order.trackingId && (
-            <span className="text-[10px] font-mono text-gray-400" title="מזהה מעקב שטח">
-              {order.trackingId}
-            </span>
-          )}
-        </div>
-
-        {/* Status pill badge with beautiful border ring */}
-        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ring-1 ring-inset ${colors.badge}`}>
-          {getStatusLabel(order.status)}
-        </span>
-      </div>
-
-      {/* Customer & Destination Details Section */}
-      <div 
-        className="p-4 md:p-5 flex-1 flex flex-col gap-4 cursor-pointer hover:bg-slate-50/45 active:scale-[0.99] transition-all" 
-        onClick={() => onOpenOverlay && onOpenOverlay(order)}
-        title="לחץ לצפייה מורחבת ופעולות AI 🌿"
-      >
+      <div className={`absolute inset-0 rounded-3xl bg-gradient-to-br ${status.color} blur-xl opacity-40 group-hover:opacity-60 transition-opacity`} />
+      
+      <div className={`relative overflow-hidden rounded-3xl border border-gray-200 dark:border-white/10 bg-white dark:bg-gray-900 shadow-xl ${status.glow} transition-all duration-500`}>
+        <div className="h-1 w-full bg-gradient-to-r from-blue-500 via-purple-500 to-blue-500 bg-[length:200%_100%] animate-[shimmer_3s_ease-in-out_infinite]" />
         
-        {/* Customer contact card */}
-        <div className="flex items-start gap-3">
-          <div className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center shrink-0 border border-gray-200 shadow-inner">
-            <User className="w-4.5 h-4.5 text-gray-500" />
+        <div className="relative p-5">
+          {/* Header */}
+          <div className="flex items-start justify-between gap-3 mb-4">
+            <div className="flex-1 min-w-0">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-100 dark:bg-white/10 mb-2">
+                <Zap className="w-3 h-3 text-amber-500" />
+                <span className="text-[10px] font-mono font-bold text-gray-600 dark:text-gray-300">
+                  #{order.orderNumber || order.id.substring(0,5)}
+                </span>
+              </div>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white leading-tight truncate">
+                {order.customerName}
+              </h3>
+              <div className="flex items-center gap-2 mt-1.5 text-gray-500">
+                <MapPin className="w-3.5 h-3.5 text-red-500 shrink-0" />
+                <span className="text-xs truncate">{order.destination}</span>
+              </div>
+            </div>
           </div>
-          <div className="flex-1 min-w-0">
-            <h4 className="font-bold text-gray-800 text-[14.5px] truncate select-all">
-              {order.customerName}
-            </h4>
-            {order.customerPhone && (
-              <a 
-                href={`tel:${order.customerPhone}`}
-                onClick={(e) => e.stopPropagation()}
-                className="inline-flex items-center gap-1.5 text-xs text-[#00a884] font-medium hover:underline mt-0.5"
+
+          {/* Items */}
+          <div className="relative rounded-2xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/10 p-4 mb-4">
+            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-2">תכולת המשלוח</span>
+            <p className="text-sm text-gray-800 dark:text-gray-200 font-mono whitespace-pre-wrap leading-relaxed max-h-24 overflow-y-auto">
+              {order.items}
+            </p>
+          </div>
+
+          {/* Controls Grid */}
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            {/* ETA */}
+            <div>
+              <span className="text-[9px] font-bold text-gray-500 uppercase block mb-1.5">שעת הגעה (ETA)</span>
+              <div className="relative">
+                <Clock className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="00:00"
+                  value={order.eta || ""}
+                  onChange={(e) => onUpdate(order.id, 'eta', e.target.value)}
+                  className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl py-2.5 pr-10 pl-3 text-sm font-mono focus:ring-2 focus:ring-blue-500 transition-all text-right"
+                />
+              </div>
+            </div>
+
+            {/* Driver */}
+            <div>
+              <span className="text-[9px] font-bold text-gray-500 uppercase block mb-1.5">נהג משובץ</span>
+              <select
+                value={order.driverId || ""}
+                onChange={(e) => onUpdate(order.id, 'driverId', e.target.value)}
+                className={`w-full rounded-xl py-2.5 px-3 text-sm font-bold border focus:ring-2 focus:ring-blue-500 transition-all cursor-pointer ${
+                  order.driverId ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-amber-50 text-amber-700 border-amber-200"
+                }`}
               >
-                <Phone className="w-3 h-3" />
-                <span className="font-mono">{order.customerPhone}</span>
-              </a>
-            )}
-          </div>
-        </div>
-
-        {/* Destination block */}
-        <div className="flex items-start gap-3">
-          <div className="w-8 h-8 rounded-lg bg-red-50 text-red-600 flex items-center justify-center shrink-0 border border-red-100">
-            <MapPin className="w-4 h-4" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <span className="text-[11px] font-semibold text-gray-400 block tracking-tight">כתובת פריקה ויעד</span>
-            <span className="text-xs text-gray-700 font-medium block mt-0.5 truncate select-all" title={order.destination}>
-              {order.destination}
-            </span>
-          </div>
-        </div>
-
-        {/* Items and description lists */}
-        <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 flex-1 flex flex-col justify-between">
-          <div>
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 mb-1.5">
-              <Package className="w-3.5 h-3.5" />
-              <span>פרטי אספקה וציוד</span>
-            </div>
-            <div className="text-xs text-gray-750 font-medium leading-relaxed max-h-24 overflow-y-auto whitespace-pre-wrap">
-              {order.items || '_אין פירוט פריטים להזמנה זו_'}
+                <option value="">לא משויך</option>
+                <option value="hikmat">חכמת (מנוף)</option>
+                <option value="ali">עלי (משאית)</option>
+                {drivers.map((drv) => (
+                  <option key={drv.id} value={drv.name}>{drv.name}</option>
+                ))}
+              </select>
             </div>
           </div>
+        </div>
 
-          {/* Logistics info (Warehouse code) */}
-          <div className="mt-3 pt-2 text-[10.5px] text-gray-400 flex items-center justify-between border-t border-gray-200/50">
-            <span className="flex items-center gap-1">
-              🏢 יציאה מ: <b>{order.warehouse || 'מחסן ראשי'}</b>
-            </span>
-
-            {order.eta && (
-              <span className="flex items-center gap-1 text-emerald-600 font-semibold bg-emerald-50 px-1.5 py-0.5 rounded-md">
-                ⏰ ETA: {order.eta}
-              </span>
-            )}
+        {/* Footer Status */}
+        <div className="px-5 py-3 bg-gray-50 dark:bg-white/5 border-t border-gray-100 dark:border-white/5 flex items-center justify-between">
+          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r ${status.color}`}>
+            {status.icon}
+            <span className="text-xs font-bold text-gray-800 dark:text-white">{status.label}</span>
           </div>
-        </div>
 
-        {/* Date details */}
-        <div className="flex items-center justify-between text-xs text-gray-500">
-          <span className="flex items-center gap-1 font-mono">
-            <Calendar className="w-3.5 h-3.5 text-gray-400" />
-            {order.date || 'היום'}
-          </span>
-          
-          <span className="flex items-center gap-1 font-mono">
-            <Clock className="w-3.5 h-3.5 text-gray-400" />
-            {order.time || 'עסקים רגיל'}
-          </span>
-        </div>
-
-        {/* Dynamic button indicator for mobile overlay */}
-        <div className="mt-2 pt-2 border-t border-dashed border-gray-250 flex justify-center shrink-0">
-          <div className="w-full py-2 bg-[#00a884]/5 hover:bg-[#00a884]/15 text-[#00a884] rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 border border-[#00a884]/10">
-            <span>👀 פרטים מלאים ועוזרת AI 🌿</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Real-time Interaction Actions panel */}
-      <div className="px-4 md:px-5 py-3.5 md:py-4 border-t border-gray-100 bg-[#fbfcfd] flex flex-col gap-3">
-        
-        {/* Driver assign selection */}
-        <div className="flex flex-col gap-1.5">
-          <label className="text-[11px] font-bold text-gray-500 flex items-center gap-1">
-            <Truck className="w-3.5 h-3.5 text-[#00a884]" />
-            נהג משובץ בסידור:
-          </label>
           <select
-            value={order.driverId || ''}
-            onChange={(e) => handleUpdateDriver(order.id, e.target.value)}
-            className="w-full text-xs bg-white text-gray-800 border border-gray-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#00a884] focus:border-[#00a884] font-medium"
+            value={order.status}
+            onChange={(e) => onUpdate(order.id, 'status', e.target.value)}
+            className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-white/10 rounded-xl py-2 px-3 text-xs font-bold focus:ring-2 focus:ring-blue-500 cursor-pointer shadow-sm"
           >
-            <option value="">-- טרם שובץ (לא משויך) --</option>
-            {/* Render dynamic drivers if exists */}
-            {drivers.length > 0 ? (
-              drivers.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.name} {d.phone ? `(${d.phone})` : ''}
-                </option>
-              ))
-            ) : (
-              // Render fallbacks if none loaded
-              FALLBACK_DRIVERS.map((f) => (
-                <option key={f.id} value={f.name}>
-                  {f.name}
-                </option>
-              ))
-            )}
-          </select>
-        </div>
-
-        {/* Status changing dropdown */}
-        <div className="flex flex-col gap-1.5">
-          <label className="text-[11px] font-bold text-gray-500 flex items-center gap-1">
-            <Layers className="w-3.5 h-3.5 text-gray-400" />
-            עדכון סטטוס התקדמות:
-          </label>
-          <select
-            value={order.status || 'pending'}
-            onChange={(e) => handleUpdateStatus(order.id, e.target.value)}
-            className={`w-full text-xs font-semibold border rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-opacity-55 cursor-pointer bg-white ${
-              order.status === 'pending' ? 'text-amber-700 border-amber-300 focus:ring-amber-500' :
-              order.status === 'preparing' ? 'text-blue-700 border-blue-300 focus:ring-blue-500' :
-              order.status === 'ready' ? 'text-purple-700 border-purple-300 focus:ring-purple-500' :
-              (order.status === 'on_the_way' || order.status === 'in_transit') ? 'text-cyan-700 border-cyan-300 focus:ring-cyan-500' :
-              order.status === 'delivered' ? 'text-emerald-700 border-emerald-300 focus:ring-emerald-500' :
-              'text-rose-700 border-rose-300 focus:ring-rose-500'
-            }`}
-          >
-            <option value="pending" className="text-amber-700 font-medium">⏳ בהמתנה (Pending)</option>
-            <option value="preparing" className="text-blue-700 font-medium">🛠️ בהכנה במחסן (Preparing)</option>
-            <option value="ready" className="text-purple-700 font-medium">📦 מוכן להעמסה (Ready)</option>
-            <option value="on_the_way" className="text-cyan-700 font-medium">🚚 בדרך לשטח (On the way)</option>
-            <option value="delivered" className="text-emerald-700 font-medium">✅ נמסר וסופק (Delivered)</option>
-            <option value="cancelled" className="text-rose-700 font-medium">❌ מבוטל (Cancelled)</option>
+            <option value="pending">ממתין</option>
+            <option value="preparing">בהכנה</option>
+            <option value="ready">מוכן</option>
+            <option value="on_the_way">בדרך</option>
+            <option value="delivered">נמסר</option>
+            <option value="cancelled">בוטל</option>
           </select>
         </div>
       </div>
-
-      {/* Last updated footer log */}
-      {order.updatedAt && (
-        <div className="px-5 py-2.5 bg-gray-50/70 border-t border-gray-100 text-[10px] text-gray-400 font-mono text-center">
-          עדכון אחרון: {new Date(order.updatedAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', second: '2-digit' })} ({new Date(order.updatedAt).toLocaleDateString('he-IL')})
-        </div>
-      )}
     </motion.div>
   );
 }
 
-export default function OrdersBoardTab({ 
-  onOpenNoaChat,
-  onBack
-}: { 
-  onOpenNoaChat?: (order: Order) => void;
-  onBack?: () => void;
-}) {
+// --- Main App Component ---
+export default function OrdersBoardTab() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [activeFilter, setActiveFilter] = useState<string>("active");
+  const [searchTerm, setSearchTerm] = useState<string>("");
   const [loading, setLoading] = useState(true);
-  
-  // Controls
-  const [selectedOrderForOverlay, setSelectedOrderForOverlay] = useState<Order | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [activeFilter, setActiveFilter] = useState<string>('all'); // 'all' is default to bypass initial filter and ensure immediate visibility
-  const [updatingId, setUpdatingId] = useState<string | null>(null);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // 1. Subscribe to Live Orders from Firestore
+  // 1. Firebase Live Sync
   useEffect(() => {
-    const ordersCol = collection(db, 'orders');
-    
-    const unsubscribe = onSnapshot(ordersCol, (snapshot) => {
-      const list: Order[] = [];
-      snapshot.forEach((doc) => {
-        const data = doc.data();
-        list.push({
-          id: doc.id,
-          orderNumber: data.orderNumber || '',
-          customerName: data.customerName || 'לקוח ללא שם',
-          customerPhone: data.customerPhone || '',
-          date: data.date || '',
-          time: data.time || '',
-          destination: data.destination || 'מגרש ח. סבן',
-          items: data.items || '',
-          driverId: data.driverId || '',
-          warehouse: data.warehouse || 'מחסן ראשי',
-          status: data.status || 'pending',
-          trackingId: data.trackingId || '',
-          createdAt: data.createdAt || '',
-          updatedAt: data.updatedAt || '',
-          eta: data.eta || ''
-        });
-      });
-      
-      // Sort: standard descending order orderNumber or createdAt
-      list.sort((a, b) => {
-        const numA = parseInt(a.orderNumber) || 0;
-        const numB = parseInt(b.orderNumber) || 0;
-        return numB - numA;
-      });
-
+    const q = query(collection(db, 'orders'), orderBy('createdAt', 'desc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
       setOrders(list);
       setLoading(false);
-    }, (error) => {
-      console.error('Real-time orders board fetch failure:', error);
-      setLoading(false);
     });
-
     return () => unsubscribe();
   }, []);
 
-  // 2. Subscribe to Drivers from Firestore (with fallbacks if empty)
-  useEffect(() => {
-    const driversCol = collection(db, 'drivers');
+  // 2. Update Handler (Firebase)
+  const handleUpdate = async (orderId: string, field: keyof Order, value: string) => {
+    try {
+      const updates: any = { [field]: value, updatedAt: new Date().toISOString() };
+      if (field === 'status' || field === 'driverId') updates.eta = ''; // חוק האיפוס
+      await updateDoc(doc(db, 'orders', orderId), updates);
+    } catch (error) {
+      console.error("שגיאה בעדכון הפריט:", error);
+    }
+  };
+
+  // 3. Metrics
+  const totalCount = orders.length;
+  const preparingCount = orders.filter((o) => o.status === "preparing").length;
+  const readyCount = orders.filter((o) => o.status === "ready").length;
+  const onTheWayCount = orders.filter((o) => o.status === "on_the_way").length;
+  const deliveredCount = orders.filter((o) => o.status === "delivered").length;
+  const unassignedCount = orders.filter((o) => !o.driverId && o.status !== 'delivered' && o.status !== 'cancelled').length;
+
+  // 4. Filter Logic
+  const filteredOrders = orders.filter((order) => {
+    const searchMatch = !searchTerm || order.customerName.includes(searchTerm) || order.orderNumber?.includes(searchTerm);
+    const filterMatch = 
+      activeFilter === "all" ? true :
+      activeFilter === "active" ? !['delivered', 'cancelled'].includes(order.status) :
+      activeFilter === "unassigned" ? !order.driverId :
+      order.status === activeFilter;
     
-    const unsubscribe = onSnapshot(driversCol, (snapshot) => {
-      const list: Driver[] = [];
-      snapshot.forEach((doc) => {
-        const data = doc.data();
-        list.push({
-          id: doc.id,
-          name: data.name || data.displayName || doc.id,
-          phone: data.phone || data.phoneNumber || '',
-          active: data.active !== false
-        });
-      });
-      setDrivers(list);
-    }, (error) => {
-      console.warn('Could not load dynamic drivers list, utilizing premium fallbacks:', error);
-    });
-
-    return () => unsubscribe();
-  }, []);
-
-  // Update Firestore Handlers (realtime updates + compliance rules)
-  const handleUpdateStatus = async (orderId: string, newStatus: string) => {
-    setUpdatingId(orderId);
-    try {
-      const orderRef = doc(db, 'orders', orderId);
-      
-      // Compliance with JONI rule: "חוק האיפוס: כל שינוי ידני שאת מתבקשת לעשות בהזמנה קיימת, מאפס מיד את שעת ה-ETA המקורית".
-      // Therefore, update document status, updatedAt and clear eta
-      await updateDoc(orderRef, {
-        status: newStatus,
-        eta: '', // clears ETA on manual changes
-        updatedAt: new Date().toISOString()
-      });
-
-      showToast(`הסטטוס עודכן ל-${getStatusLabel(newStatus)} בהצלחה! השעה המשוערת (ETA) אופסה.`);
-    } catch (err: any) {
-      console.error('Failed to update status:', err);
-      showToast('❌ שגיאה בעדכון הסטטוס: ודא שיש לך הרשאות מתאימות במערכת');
-    } finally {
-      setUpdatingId(null);
-    }
-  };
-
-  const handleUpdateDriver = async (orderId: string, newDriverId: string) => {
-    setUpdatingId(orderId);
-    try {
-      const orderRef = doc(db, 'orders', orderId);
-      
-      // Compliance with JONI rule: manual change resets ETA
-      await updateDoc(orderRef, {
-        driverId: newDriverId,
-        eta: '', // clears ETA on manual changes
-        updatedAt: new Date().toISOString()
-      });
-
-      const driverName = getDriverName(newDriverId);
-      showToast(`הזמנה שויכה לנהג ${driverName || 'חיצוני'} בהצלחה! השעה המשוערת (ETA) אופסה.`);
-    } catch (err: any) {
-      console.error('Failed to update driver:', err);
-      showToast('❌ שגיאה בשיבוץ הנהג: ודא שיש לך הרשאות מתאימות במערכת');
-    } finally {
-      setUpdatingId(null);
-    }
-  };
-
-  const handleUpdateEta = async (orderId: string, newEta: string) => {
-    setUpdatingId(orderId);
-    try {
-      const orderRef = doc(db, 'orders', orderId);
-      await updateDoc(orderRef, {
-        eta: newEta,
-        updatedAt: new Date().toISOString()
-      });
-      showToast(`השעה המשוערת (ETA) עודכנה ל-${newEta || 'ללא הגדרה'} בהצלחה!`);
-    } catch (err: any) {
-      console.error('Failed to update ETA:', err);
-      showToast('❌ שגיאה בעדכון ETA: ודא שיש לך הרשאות מתאימות במערכת');
-    } finally {
-      setUpdatingId(null);
-    }
-  };
-
-  const handleUpdateItems = async (orderId: string, newItems: string) => {
-    setUpdatingId(orderId);
-    try {
-      const orderRef = doc(db, 'orders', orderId);
-      await updateDoc(orderRef, {
-        items: newItems,
-        updatedAt: new Date().toISOString()
-      });
-      showToast('תכולת ופריטי ההזמנה עודכנו במערכת בהצלחה!');
-    } catch (err: any) {
-      console.error('Failed to update items:', err);
-      showToast('❌ שגיאה בעדכון הפריטים: ודא שיש לך הרשאות מתאימות במערכת');
-    } finally {
-      setUpdatingId(null);
-    }
-  };
-
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => {
-      setToastMessage(null);
-    }, 4500);
-  };
-
-  const getDriverName = (id: string) => {
-    if (!id) return 'לא שובץ נהג 🚚';
-    const drv = drivers.find(d => d.id === id);
-    if (drv) return drv.name;
-    const fallback = FALLBACK_DRIVERS.find(f => f.id === id || f.name === id);
-    return fallback ? fallback.name : id;
-  };
-
-  // Helper labels & colors
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case 'pending': return 'בהמתנה לשיבוץ';
-      case 'preparing': return 'בהכנה במחסן';
-      case 'ready': return 'מוכן להעמסה';
-      case 'on_the_way':
-      case 'in_transit': return 'בדרך לשטח';
-      case 'delivered': return 'נמסר וסופק ';
-      case 'cancelled': return 'מבוטל';
-      default: return status;
-    }
-  };
-
-  const getStatusColors = (status: string) => {
-    switch (status) {
-      case 'pending': 
-        return {
-          bg: 'bg-amber-50',
-          text: 'text-amber-800',
-          border: 'border-amber-200',
-          badge: 'bg-amber-100 text-amber-800 ring-amber-600/20'
-        };
-      case 'preparing': 
-        return {
-          bg: 'bg-blue-50',
-          text: 'text-blue-800',
-          border: 'border-blue-200',
-          badge: 'bg-blue-100 text-blue-800 ring-blue-600/20'
-        };
-      case 'ready': 
-        return {
-          bg: 'bg-purple-50',
-          text: 'text-purple-800',
-          border: 'border-purple-200',
-          badge: 'bg-purple-100 text-purple-850 ring-purple-600/20'
-        };
-      case 'on_the_way': 
-      case 'in_transit':
-        return {
-          bg: 'bg-cyan-50',
-          text: 'text-cyan-800',
-          border: 'border-cyan-200',
-          badge: 'bg-cyan-100 text-cyan-800 ring-cyan-600/20'
-        };
-      case 'delivered': 
-        return {
-          bg: 'bg-emerald-50',
-          text: 'text-emerald-800',
-          border: 'border-emerald-200',
-          badge: 'bg-emerald-100 text-emerald-800 ring-emerald-600/20'
-        };
-      case 'cancelled': 
-        return {
-          bg: 'bg-rose-50',
-          text: 'text-rose-800',
-          border: 'border-rose-200',
-          badge: 'bg-rose-100 text-rose-800 ring-rose-600/10'
-        };
-      default: 
-        return {
-          bg: 'bg-gray-50',
-          text: 'text-gray-800',
-          border: 'border-gray-200',
-          badge: 'bg-gray-100 text-gray-800 ring-gray-600/10'
-        };
-    }
-  };
-
-  // Filter & Search Logic
-  const filteredOrders = orders.filter(order => {
-    // 1. Unified Filter
-    switch (activeFilter) {
-      case 'active':
-        if (order.status === 'delivered' || order.status === 'cancelled') return false;
-        break;
-      case 'pending':
-        // Show pending if status is pending OR if no driver is assigned
-        if (order.status !== 'pending' && order.driverId !== '') return false;
-        break;
-      case 'in_progress':
-        // Matches in progress states (preparing, ready, on_the_way, in_transit)
-        if (order.status !== 'preparing' && order.status !== 'ready' && order.status !== 'on_the_way' && order.status !== 'in_transit') return false;
-        break;
-      case 'delivered':
-        if (order.status !== 'delivered') return false;
-        break;
-      case 'preparing':
-        if (order.status !== 'preparing') return false;
-        break;
-      case 'ready':
-        if (order.status !== 'ready') return false;
-        break;
-      case 'on_the_way':
-      case 'in_transit':
-        if (order.status !== 'on_the_way' && order.status !== 'in_transit') return false;
-        break;
-      case 'cancelled':
-        if (order.status !== 'cancelled') return false;
-        break;
-      case 'all':
-      default:
-        // 'all' doesn't restrict by status, bypassing the filter and showing all fetched orders
-        break;
-    }
-
-    // 2. Search Text
-    if (!searchTerm.trim()) return true;
-    const s = searchTerm.toLowerCase();
-    return (
-      order.orderNumber.toLowerCase().includes(s) ||
-      order.customerName.toLowerCase().includes(s) ||
-      order.customerPhone.toLowerCase().includes(s) ||
-      order.destination.toLowerCase().includes(s) ||
-      order.items.toLowerCase().includes(s) ||
-      order.warehouse.toLowerCase().includes(s) ||
-      getDriverName(order.driverId).toLowerCase().includes(s)
-    );
+    return searchMatch && filterMatch;
   });
 
-  // KPI Calculations
-  const activeOrdersCount = orders.filter(o => o.status !== 'delivered' && o.status !== 'cancelled').length;
-  const pendingCount = orders.filter(o => o.status === 'pending').length;
-  const inProgressCount = orders.filter(o => o.status === 'preparing' || o.status === 'ready' || o.status === 'on_the_way' || o.status === 'in_transit').length;
-  const deliveredCount = orders.filter(o => o.status === 'delivered').length;
-
   return (
-    <div className="flex-1 h-full flex flex-col bg-[#f4f6f8] overflow-y-auto" dir="rtl">
-      
-      {/* Dynamic Toast Message */}
-      <AnimatePresence>
-        {toastMessage && (
-          <motion.div 
-            initial={{ opacity: 0, y: -50, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -50, scale: 0.9 }}
-            className="fixed top-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3.5 bg-[#1f2937] text-white font-medium text-sm rounded-xl shadow-xl border border-gray-700/50 flex items-center gap-3.5"
-          >
-            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping shrink-0" />
-            <span>{toastMessage}</span>
-            <button onClick={() => setToastMessage(null)} className="text-gray-400 hover:text-white p-0.5 border-none bg-transparent cursor-pointer">
-              <X className="w-4 h-4" />
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Header section with branding */}
-      <div className="bg-white border-b border-gray-200 px-4 md:px-6 py-4 md:py-5 shrink-0 shadow-xs">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 w-full md:w-auto">
+    <div className="min-h-screen bg-gray-50/50 dark:bg-gray-950" dir="rtl">
+      {/* Header */}
+      <header className="sticky top-0 z-20 border-b border-gray-200 dark:border-white/5 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl">
+        <div className="container mx-auto px-4 py-5">
+          <div className="flex flex-col md:flex-row justify-between gap-4 mb-6">
             <div>
-              <div className="flex items-center gap-3">
-                <span className="p-2 md:p-2.5 bg-green-50 text-[#00a884] rounded-xl font-bold text-lg select-none">🏗️</span>
-                <h1 className="text-xl md:text-2xl font-bold text-gray-900 tracking-tight leading-none">סידור עבודה חי - ח. סבן חומרי בניין</h1>
-              </div>
-              <p className="text-xs md:text-sm text-gray-500 mt-1.5 font-medium">
-                לוח בקרה מרכזי לשירות לקוחות, שיבוץ נהגים וסטטוס העמסת סחורה בזמן אמת.
-              </p>
+              <h1 className="text-2xl md:text-3xl font-black" style={{ backgroundColor: 'rgba(184, 212, 246, 1)', backgroundRepeat: 'no-repeat', backgroundPosition: 'center', backgroundSize: 'cover', color: 'rgba(189, 16, 224, 1)' }}>לוח סידור</h1>
+              <p className="text-sm" style={{ fontWeight: '600', borderWidth: '1px', borderColor: 'rgba(0, 0, 0, 0.45)' }}>מחובר בזמן אמת</p>
             </div>
-
-            {/* Back button on mobile only */}
-            {onBack && (
-              <button
-                onClick={onBack}
-                className="md:hidden flex items-center gap-1.5 px-3.5 py-2.5 bg-[#00a884]/5 hover:bg-[#00a884]/15 text-[#00a884] rounded-xl text-xs font-bold transition-all border border-[#00a884]/10 cursor-pointer self-start sm:self-center"
-                title="חזרה לצ'אטים"
-              >
-                <ArrowRight className="w-4 h-4 text-[#00a884]" />
-                <span>חזרה לשיחות 💬</span>
-              </button>
-            )}
+            <div className="relative w-full md:w-72">
+              <Search className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="חיפוש הזמנה..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full bg-gray-100 dark:bg-gray-800 rounded-2xl py-3 pr-11 pl-4 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+              />
+            </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="flex items-center gap-1 text-xs text-gray-400 font-medium">
-              <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#00a884]" />
-              מחובר ומסונכרן ל-Firestore של ח. סבן
-            </span>
+          {/* KPI Buttons */}
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+            <MetricCard label="כל ההזמנות" value={totalCount} icon={<Package className="w-4 h-4" />} active={activeFilter === "all"} onClick={() => setActiveFilter("all")} accentColor="from-gray-500/20 to-gray-600/10" />
+            <MetricCard label="פעילות בשטח" value={totalCount - deliveredCount} icon={<Zap className="w-4 h-4" />} active={activeFilter === "active"} onClick={() => setActiveFilter("active")} accentColor="from-blue-500/20 to-purple-600/10" />
+            <MetricCard label="בהכנה" value={preparingCount} icon={<Building className="w-4 h-4 text-cyan-500" />} active={activeFilter === "preparing"} onClick={() => setActiveFilter("preparing")} accentColor="from-cyan-500/20 to-cyan-600/10" />
+            <MetricCard label="מוכן" value={readyCount} icon={<CheckCircle className="w-4 h-4 text-purple-500" />} active={activeFilter === "ready"} onClick={() => setActiveFilter("ready")} accentColor="from-purple-500/20 to-purple-600/10" />
+            <MetricCard label="נמסר" value={deliveredCount} icon={<Sparkles className="w-4 h-4 text-emerald-500" />} active={activeFilter === "delivered"} onClick={() => setActiveFilter("delivered")} accentColor="from-emerald-500/20 to-emerald-600/10" />
+            <MetricCard label="חסר נהג" value={unassignedCount} icon={<AlertCircle className="w-4 h-4 text-amber-500" />} active={activeFilter === "unassigned"} onClick={() => setActiveFilter("unassigned")} accentColor="from-amber-500/20 to-amber-600/10" />
           </div>
         </div>
+      </header>
 
-        {/* Dynamic Bento Box Metrics */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
-          
-          {/* Card 1: Active Orders */}
-          <button
-            onClick={() => setActiveFilter('active')}
-            className={`text-right w-full p-4 rounded-xl shadow-2xs transition-all duration-200 hover:scale-[1.01] hover:shadow-xs active:scale-[0.99] border cursor-pointer flex flex-col justify-between ${
-              activeFilter === 'active'
-                ? 'bg-slate-800 text-white border-slate-700 ring-2 ring-slate-500/30'
-                : 'bg-gradient-to-br from-gray-50 to-gray-100/80 hover:from-gray-100 text-gray-800 border-gray-200'
-            }`}
-          >
-            <div className="w-full flex items-center justify-between">
-              <span className={`text-xs font-bold ${activeFilter === 'active' ? 'text-gray-300' : 'text-gray-500'}`}>הזמנות פעילות</span>
-              <span className={`p-1.5 rounded-lg text-[10px] font-bold leading-none ${activeFilter === 'active' ? 'bg-white/10 text-white' : 'bg-gray-200/50 text-gray-700'}`}>היום</span>
-            </div>
-            <div className={`text-2xl font-extrabold mt-2 font-mono ${activeFilter === 'active' ? 'text-white' : 'text-gray-900'}`}>{activeOrdersCount}</div>
-            <div className={`text-[10px] mt-1 ${activeFilter === 'active' ? 'text-gray-300' : 'text-gray-400'}`}>לא כולל מסירות סופיות וביטולים</div>
-          </button>
-
-          {/* Card 2: Pending Assign (No driver or status 'pending') */}
-          <button
-            onClick={() => setActiveFilter('pending')}
-            className={`text-right w-full p-4 rounded-xl shadow-2xs transition-all duration-200 hover:scale-[1.01] hover:shadow-xs active:scale-[0.99] border cursor-pointer flex flex-col justify-between ${
-              activeFilter === 'pending'
-                ? 'bg-amber-500 text-white border-amber-400 ring-2 ring-amber-500/30'
-                : 'bg-gradient-to-br from-amber-50 to-amber-100/30 hover:from-amber-100/40 text-amber-900 border-amber-200'
-            }`}
-          >
-            <div className="w-full flex items-center justify-between">
-              <span className={`text-xs font-bold ${activeFilter === 'pending' ? 'text-amber-100' : 'text-amber-700'}`}>ממתין לשיבוץ</span>
-              <span className={`p-1.5 rounded-lg text-[10px] font-bold leading-none ${activeFilter === 'pending' ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-800'}`}>דחוף</span>
-            </div>
-            <div className={`text-2xl font-extrabold mt-2 font-mono ${activeFilter === 'pending' ? 'text-white' : 'text-amber-900'}`}>{pendingCount}</div>
-            <div className={`text-[10px] mt-1 ${activeFilter === 'pending' ? 'text-amber-100' : 'text-amber-600/80'}`}>הזמנות הזקוקות לשיוך נהג</div>
-          </button>
-
-          {/* Card 3: Active Preparation or Route */}
-          <button
-            onClick={() => setActiveFilter('in_progress')}
-            className={`text-right w-full p-4 rounded-xl shadow-2xs transition-all duration-200 hover:scale-[1.01] hover:shadow-xs active:scale-[0.99] border cursor-pointer flex flex-col justify-between ${
-              activeFilter === 'in_progress'
-                ? 'bg-blue-600 text-white border-blue-500 ring-2 ring-blue-500/30'
-                : 'bg-gradient-to-br from-blue-50 to-indigo-50/45 hover:from-blue-100/30 text-blue-900 border-blue-150'
-            }`}
-          >
-            <div className="w-full flex items-center justify-between">
-              <span className={`text-xs font-bold ${activeFilter === 'in_progress' ? 'text-blue-100' : 'text-blue-700'}`}>בטיפול פעיל</span>
-              <span className={`p-1.5 rounded-lg text-[10px] font-bold leading-none ${activeFilter === 'in_progress' ? 'bg-white/20 text-white' : 'bg-blue-100 text-blue-800'}`}>תהליך</span>
-            </div>
-            <div className={`text-2xl font-extrabold mt-2 font-mono ${activeFilter === 'in_progress' ? 'text-white' : 'text-blue-900'}`}>{inProgressCount}</div>
-            <div className={`text-[10px] mt-1 ${activeFilter === 'in_progress' ? 'text-blue-100' : 'text-blue-600/80'}`}>בהכנה, מוכן ונהגים בדרכים</div>
-          </button>
-
-          {/* Card 4: Fully Delivered */}
-          <button
-            onClick={() => setActiveFilter('delivered')}
-            className={`text-right w-full p-4 rounded-xl shadow-2xs transition-all duration-200 hover:scale-[1.01] hover:shadow-xs active:scale-[0.99] border cursor-pointer flex flex-col justify-between ${
-              activeFilter === 'delivered'
-                ? 'bg-[#00a884] text-white border-emerald-600 ring-2 ring-[#00a884]/30'
-                : 'bg-gradient-to-br from-emerald-50 to-emerald-100/30 hover:from-emerald-100/40 text-emerald-950 border-emerald-150'
-            }`}
-          >
-            <div className="w-full flex items-center justify-between">
-              <span className={`text-xs font-bold ${activeFilter === 'delivered' ? 'text-emerald-100' : 'text-emerald-700'}`}>סופקו בהצלחה</span>
-              <span className={`p-1.5 rounded-lg text-[10px] font-bold leading-none ${activeFilter === 'delivered' ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-800'}`}>בוצע</span>
-            </div>
-            <div className={`text-2xl font-extrabold mt-2 font-mono ${activeFilter === 'delivered' ? 'text-white' : 'text-emerald-950'}`}>{deliveredCount}</div>
-            <div className={`text-[10px] mt-1 ${activeFilter === 'delivered' ? 'text-emerald-100' : 'text-emerald-600/80'}`}>סחורות שנפרקו בהצלחה בשטח</div>
-          </button>
-        </div>
-      </div>
-
-      {/* Filter and search actions bar */}
-      <div className="bg-white border-b border-gray-200 px-4 md:px-6 py-3.5 md:py-4 shrink-0 flex flex-col md:flex-row gap-4 items-center justify-between">
-        
-        {/* Responsive Search Input */}
-        <div className="relative w-full md:w-96">
-          <Search className="absolute right-3 top-2.5 w-4.5 h-4.5 text-gray-400" />
-          <input 
-            type="text" 
-            placeholder="חפש לפי מספר הזמנה, לקוח, יעד, נהג..." 
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pr-10 pl-4 py-2 text-xs border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#00a884]/20 focus:border-[#00a884] bg-gray-50 text-gray-800 transition-all text-right"
-          />
-          {searchTerm && (
-            <button 
-              onClick={() => setSearchTerm('')} 
-              className="absolute left-3 top-2.5 text-gray-400 hover:text-gray-600 border-none bg-transparent cursor-pointer"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          )}
-        </div>
-
-        {/* Advanced Filters Tab Group */}
-        <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-1 md:pb-0 scrollbar-none" dir="rtl">
-          <Filter className="w-4 h-4 text-gray-400 shrink-0 ml-1.5" />
-          
-          <button 
-            onClick={() => setActiveFilter('all')} 
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-all shrink-0 border-0 ${
-              activeFilter === 'all' 
-                ? 'bg-[#111b21] text-white shadow-xs' 
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            כל ההזמנות ({orders.length})
-          </button>
-
-          <button 
-            onClick={() => setActiveFilter('active')} 
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-all shrink-0 border-0 ${
-              activeFilter === 'active' 
-                ? 'bg-[#00a884] text-white shadow-xs' 
-                : 'bg-emerald-50 text-[#00a884] hover:bg-emerald-100/60'
-            }`}
-          >
-            📋 פעילות בשטח ({activeOrdersCount})
-          </button>
-
-          <button 
-            onClick={() => setActiveFilter('pending')} 
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-all shrink-0 border-0 ${
-              activeFilter === 'pending' 
-                ? 'bg-amber-100 text-amber-900 border border-amber-200 font-semibold' 
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            בהמתנה ({orders.filter(o => o.status === 'pending').length})
-          </button>
-
-          <button 
-            onClick={() => setActiveFilter('preparing')} 
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-all shrink-0 border-0 ${
-              activeFilter === 'preparing' 
-                ? 'bg-blue-100 text-blue-900 border border-blue-200 font-semibold' 
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            בהכנה במחסן
-          </button>
-
-          <button 
-            onClick={() => setActiveFilter('ready')} 
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-all shrink-0 border-0 ${
-              activeFilter === 'ready' 
-                ? 'bg-purple-100 text-purple-900 border border-purple-200 font-semibold' 
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            מוכן להעמסה
-          </button>
-
-          <button 
-            onClick={() => setActiveFilter('on_the_way')} 
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-all shrink-0 border-0 ${
-              activeFilter === 'on_the_way' 
-                ? 'bg-cyan-100 text-cyan-900 border border-cyan-200 font-semibold' 
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            בדרך
-          </button>
-
-          <button 
-            onClick={() => setActiveFilter('delivered')} 
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-all shrink-0 border-0 ${
-              activeFilter === 'delivered' 
-                ? 'bg-emerald-100 text-emerald-900 border border-emerald-200 font-semibold' 
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            סופק ({deliveredCount})
-          </button>
-
-          <button 
-            onClick={() => setActiveFilter('cancelled')} 
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-all shrink-0 border-0 ${
-              activeFilter === 'cancelled' 
-                ? 'bg-rose-100 text-rose-900 border border-rose-200 font-semibold' 
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            בוטל
-          </button>
-        </div>
-      </div>
-
-      {/* Main Content Pane */}
-      <div className="flex-1 p-3.5 md:p-6">
+      {/* Grid */}
+      <main className="container mx-auto px-4 py-8">
         {loading ? (
-          <div className="h-64 flex flex-col items-center justify-center text-gray-500">
-            <RefreshCw className="w-10 h-10 text-[#00a884] animate-spin mb-4" />
-            <span className="font-semibold text-sm">קורא נתוני סידור בשידור ישיר...</span>
-            <span className="text-xs text-gray-400 mt-1">אנא המתן בזמן שנועה מסנכרנת את Firestore</span>
-          </div>
+          <div className="text-center text-gray-500 py-20 font-bold animate-pulse">מסנכרן נתונים מהשטח...</div>
         ) : filteredOrders.length === 0 ? (
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-2xl border border-gray-200/80 p-12 text-center max-w-xl mx-auto shadow-md mt-6"
-          >
-            <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-5 text-[#8696a0] border border-gray-100 shadow-inner">
-              <Package className="w-10 h-10 text-gray-400" />
-            </div>
-            <h3 className="text-lg font-bold text-gray-800">לא נמצאו הזמנות תואמות לסינון</h3>
-            <p className="text-sm text-gray-500 mt-2 leading-relaxed">
-              אין מסמכים התואמים את החיפוש או הסינון שנבחרו. נסה לשנות את הסטטוס או לנקות את שורת החיפוש.
-            </p>
-            {searchTerm && (
-              <button 
-                onClick={() => setSearchTerm('')} 
-                className="mt-5 px-5 py-2 text-xs text-white bg-[#00a884] hover:bg-[#008f6f] font-semibold rounded-xl cursor-pointer border-none shadow-sm transition-all"
-              >
-                נקה חיפוש
-              </button>
-            )}
-          </motion.div>
+          <div className="text-center text-gray-500 py-20 font-bold">אין הזמנות תואמות לסינון. הכל נקי! 🌿</div>
         ) : (
-          <div className="flex-1 overflow-y-auto w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <AnimatePresence>
-              {filteredOrders.map((order) => {
-                return (
-                  <OrderCard
-                    key={order.id}
-                    order={order}
-                    updatingId={updatingId}
-                    drivers={drivers}
-                    handleUpdateDriver={handleUpdateDriver}
-                    handleUpdateStatus={handleUpdateStatus}
-                    getDriverName={getDriverName}
-                    getStatusColors={getStatusColors}
-                    getStatusLabel={getStatusLabel}
-                    onOpenOverlay={(ord: Order) => setSelectedOrderForOverlay(ord)}
-                  />
-                );
-              })}
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            <AnimatePresence mode="popLayout">
+              {filteredOrders.map((order) => (
+                <OrderCard key={order.id} order={order} drivers={drivers} onUpdate={handleUpdate} />
+              ))}
             </AnimatePresence>
           </div>
         )}
-      </div>
-
-      {/* Floating Modern Mobile Overlay Bottom Sheet Detail Card */}
-      <OrderMobileOverlay
-        isOpen={selectedOrderForOverlay !== null}
-        onClose={() => setSelectedOrderForOverlay(null)}
-        order={selectedOrderForOverlay}
-        drivers={drivers}
-        onUpdateStatus={handleUpdateStatus}
-        onUpdateDriver={handleUpdateDriver}
-        onUpdateEta={handleUpdateEta}
-        onUpdateItems={handleUpdateItems}
-        onOpenNoaChat={(ord) => {
-          setSelectedOrderForOverlay(null);
-          if (onOpenNoaChat) onOpenNoaChat(ord);
-        }}
-      />
+      </main>
     </div>
   );
 }

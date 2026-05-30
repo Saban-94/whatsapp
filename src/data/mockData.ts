@@ -4,7 +4,7 @@ export const currentUserProfile: UserProfile = {
   name: 'הראל סבן',
   avatar: 'https://i.postimg.cc/J7F9n0c6/Gemini-Generated-Image-9or8fm9or8fm9or8.png',
   status: 'מנהל מערכת ח. סבן',
-  phoneNumber: '+972 50-123-4567',
+  phoneNumber: '+972 50-886-1080',
 };
 
 export const initialChats: Chat[] = [
@@ -16,7 +16,7 @@ export const initialChats: Chat[] = [
     isOnline: true,
     unreadCount: 0,
     pinned: true,
-    phoneNumber: '+972 54-555-5678',
+    phoneNumber: '+972 50-886-1080',
     description: 'מנהלת משרד AI - ח. סבן',
     messages: [
       {

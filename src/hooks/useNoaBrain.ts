@@ -37,6 +37,15 @@ export interface Customer {
   phoneNumber: string;
   totalOrders: number;
 }
+export enum Type {
+  OBJECT = "OBJECT",
+  STRING = "STRING",
+  NUMBER = "NUMBER",
+  BOOLEAN = "BOOLEAN",
+  ARRAY = "ARRAY",
+  INTEGER = "INTEGER",
+}
+
 // פונקציית עזר לניקוי טקסט לדיבור (TTS)
 const sanitizeForVoice = (text: string): string => {
   return text
@@ -46,6 +55,8 @@ const sanitizeForVoice = (text: string): string => {
     .replace(/\s+/g, ' ') // ניקוי רווחים כפולים
     .trim();
 };
+
+
 
 const NOA_SYSTEM_PROMPT = `
 # Agent Instructions - SabanOS (Noa)
@@ -144,7 +155,14 @@ function safeIsoString(dateVal: any): string {
     return new Date().toISOString();
   }
 }
-
+export const updateCustomer = async (customerId: string, updates: Partial<Customer>) => {
+  try {
+    const docRef = doc(db, 'customers', customerId);
+    await updateDoc(docRef, {
+      ...updates,
+      updatedAt: serverTimestamp(),
+    });
+    
 export function useNoaBrain() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [morningReports, setMorningReports] = useState<MorningReport[]>([]);

@@ -23,30 +23,8 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
-// --- Interfaces ---
-export interface Order {
-  id: string;
-  orderNumber: string;
-  customerName: string;
-  customerPhone?: string;
-  date: string;
-  time: string;
-  destination: string;
-  items: string;
-  driverId: string;
-  warehouse: string;
-  status: string;
-  eta?: string;
-  updatedAt?: string;
-  trackingId?: string;
-  createdAt?: string;
-}
-
-export interface Driver {
-  id: string;
-  name: string;
-  phone?: string;
-}
+import { Order, Driver } from "../hooks/useNoaBrain";
+export type { Order, Driver };
 
 // --- V0 Status Config ---
 const statusConfig: Record<

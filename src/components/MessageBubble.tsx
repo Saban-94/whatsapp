@@ -8,6 +8,7 @@ import {
   CheckCheck, 
   Check 
 } from 'lucide-react';
+import { motion } from 'motion/react';
 import { Message } from '../types';
 
 const cleanNoaHtml = (text: string): string => {
@@ -15,6 +16,49 @@ const cleanNoaHtml = (text: string): string => {
   let cleaned = text.replace(/```(html|xml)/gi, '');
   cleaned = cleaned.replace(/```/g, '');
   return cleaned.trim();
+};
+
+const parseMessageContent = (text: string): Array<{ type: 'html' | 'text'; content: string }> => {
+  if (!text) return [];
+  
+  const regex = /```(?:html|xml)?([\s\S]*?)```/gi;
+  const parts: Array<{ type: 'html' | 'text'; content: string }> = [];
+  let lastIndex = 0;
+  let match;
+  
+  while ((match = regex.exec(text)) !== null) {
+    const textBefore = text.substring(lastIndex, match.index).trim();
+    if (textBefore) {
+      if (textBefore.includes('<div') || textBefore.includes('<table') || textBefore.includes('<button')) {
+        parts.push({ type: 'html', content: textBefore });
+      } else {
+        parts.push({ type: 'text', content: textBefore });
+      }
+    }
+    parts.push({ type: 'html', content: match[1].trim() });
+    lastIndex = regex.lastIndex;
+  }
+  
+  if (lastIndex < text.length) {
+    const textAfter = text.substring(lastIndex).trim();
+    if (textAfter) {
+      if (textAfter.includes('<div') || textAfter.includes('<table') || textAfter.includes('<button')) {
+        parts.push({ type: 'html', content: textAfter });
+      } else {
+        parts.push({ type: 'text', content: textAfter });
+      }
+    }
+  }
+  
+  if (parts.length === 0) {
+    if (text.includes('<div') || text.includes('<table') || text.includes('<button')) {
+      parts.push({ type: 'html', content: text });
+    } else {
+      parts.push({ type: 'text', content: text });
+    }
+  }
+  
+  return parts;
 };
 
 interface MessageBubbleProps {
@@ -114,13 +158,32 @@ export const MessageBubble = React.memo(({
               <span className={`text-[10px] font-mono ${isOut ? 'text-blue-100' : 'text-gray-500'}`}>{msg.mediaDuration || '0:12'}</span>
             </div>
           </div>
-        ) : (msg.text && (msg.text.includes('<div') || msg.text.includes('<table') || msg.text.includes('<button'))) ? (
-          <div 
-            className="text-[14px] leading-relaxed font-sans text-right"
-            dangerouslySetInnerHTML={{ __html: cleanNoaHtml(msg.text || '') }}
-          />
         ) : (
-          <p className="text-[15px] leading-relaxed whitespace-pre-wrap pl-10 pt-0.5 font-sans font-normal">{msg.text}</p>
+          <div className="space-y-2">
+            {parseMessageContent(msg.text || '').map((part, index) => {
+              if (part.type === 'html') {
+                return (
+                  <motion.div 
+                    key={index}
+                    initial={{ opacity: 0, y: 15 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.35, ease: 'easeOut' }}
+                    className="text-[14px] leading-relaxed font-sans text-right"
+                    dangerouslySetInnerHTML={{ __html: cleanNoaHtml(part.content) }}
+                  />
+                );
+              } else {
+                return (
+                  <p 
+                    key={index} 
+                    className="text-[15px] leading-relaxed whitespace-pre-wrap pl-10 pt-0.5 font-sans font-normal"
+                  >
+                    {part.content}
+                  </p>
+                );
+              }
+            })}
+          </div>
         )}
 
         <div className="absolute bottom-1.5 left-2.5 flex items-center gap-1.5 select-none opacity-85">

@@ -6,7 +6,7 @@ export interface Order {
   id: string;
   orderNumber: string;
   customerName: string;
-  customerPhone: string;
+  customerPhone?: string;
   date: string; 
   time: string; 
   destination: string;
@@ -14,8 +14,17 @@ export interface Order {
   driverId: string;
   warehouse: string;
   status: string;
-  trackingId: string;
-  createdAt: string;
+  eta?: string;
+  updatedAt?: string;
+  trackingId?: string;
+  createdAt?: string;
+}
+
+export interface Driver {
+  id: string;
+  name: string;
+  phone?: string;
+  status?: string;
 }
 
 export interface MorningReport {

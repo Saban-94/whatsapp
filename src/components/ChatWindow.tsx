@@ -49,8 +49,6 @@ interface ChatWindowProps {
   onOpenAdmin: () => void;
   onTogglePinChat?: (id: string) => void;
   readReceiptsEnabled?: boolean;
-  prefilledText?: string;
-  onClearPrefilledText?: () => void;
 }
 
 export default function ChatWindow({
@@ -65,21 +63,8 @@ export default function ChatWindow({
   onOpenAdmin,
   onTogglePinChat,
   readReceiptsEnabled = true,
-  prefilledText = '',
-  onClearPrefilledText,
 }: ChatWindowProps) {
   const [inputText, setInputText] = useState('');
-
-  // Automatically pre-fill the chat input when navigated from an order detail card
-  useEffect(() => {
-    if (prefilledText) {
-      setInputText(prefilledText);
-      if (onClearPrefilledText) {
-        onClearPrefilledText();
-      }
-    }
-  }, [prefilledText, onClearPrefilledText]);
-
   const { getNoaAnalysis } = useNoaBrain();
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showAttachMenu, setShowAttachMenu] = useState(false);

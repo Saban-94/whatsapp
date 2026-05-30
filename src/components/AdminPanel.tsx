@@ -18,8 +18,10 @@ import {
   BarChart2,
   TrendingUp,
   MessageSquare,
-  Calendar
+  Calendar,
+  Truck
 } from 'lucide-react';
+import OrdersBoardTab from './OrdersBoardTab';
 import { 
   BarChart, 
   Bar, 
@@ -58,7 +60,7 @@ export default function AdminPanel({ isOpen, onClose, chats, onImportContact, on
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
 
   // Admin section Tabs and Selected stats
-  const [adminTab, setAdminTab] = useState<'contacts' | 'stats' | 'broadcast'>('broadcast'); // Defaulting to broadcast so the user sees the new tab immediately!
+  const [adminTab, setAdminTab] = useState<'contacts' | 'stats' | 'broadcast' | 'orders'>('orders'); // Defaulting to orders so the user sees the beautifully refactored orders tab immediately!
   const [selectedGroupId, setSelectedGroupId] = useState<string>('g1');
 
   // Broadcast State
@@ -417,6 +419,17 @@ export default function AdminPanel({ isOpen, onClose, chats, onImportContact, on
         {/* Tab menu selector (iOS Style) */}
         <div className="flex border-b border-gray-100 bg-gray-50/70 px-6 gap-2 shrink-0 select-none">
           <button
+            onClick={() => setAdminTab('orders')}
+            className={`py-3 px-4 text-xs font-bold border-b-2 transition-all cursor-pointer flex items-center gap-1.5 ${
+              adminTab === 'orders' 
+                ? 'border-[#007AFF] text-[#007AFF]' 
+                : 'border-transparent text-gray-500 hover:text-gray-750'
+            }`}
+          >
+            <Truck className="w-4 h-4" />
+            לוח לוגיסטיקה והזמנות 🚚
+          </button>
+          <button
             onClick={() => setAdminTab('broadcast')}
             className={`py-3 px-4 text-xs font-bold border-b-2 transition-all cursor-pointer flex items-center gap-1.5 ${
               adminTab === 'broadcast' 
@@ -452,7 +465,9 @@ export default function AdminPanel({ isOpen, onClose, chats, onImportContact, on
         </div>
 
         {/* Dynamic workspaces render depending on current Tab selection */}
-        {adminTab === 'contacts' ? (
+        {adminTab === 'orders' ? (
+          <OrdersBoardTab />
+        ) : adminTab === 'contacts' ? (
           <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0">
             {/* LEFT SIDEBAR: Active App Chats/Users (40%) */}
             <div className="w-full md:w-[42%] border-l border-gray-100 flex flex-col bg-slate-50/50">

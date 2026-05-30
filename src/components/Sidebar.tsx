@@ -16,7 +16,7 @@ import {
   PlusSquare,
   Lock,
   ListTodo,
-  LayoutDashboard
+  Truck
 } from 'lucide-react';
 import { Chat, UserProfile, StatusStory } from '../types';
 
@@ -36,8 +36,8 @@ interface SidebarProps {
   onSearchChange: (val: string) => void;
   dir: 'rtl' | 'ltr';
   readReceiptsEnabled?: boolean;
-  viewMode: 'chat' | 'orders';
-  onViewModeChange: (mode: 'chat' | 'orders') => void;
+  currentView: 'chats' | 'orders';
+  onSelectView: (view: 'chats' | 'orders') => void;
 }
 
 export default function Sidebar({
@@ -56,8 +56,8 @@ export default function Sidebar({
   onSearchChange,
   dir,
   readReceiptsEnabled = true,
-  viewMode,
-  onViewModeChange
+  currentView,
+  onSelectView
 }: SidebarProps) {
   const [showDropdown, setShowDropdown] = useState(false);
 
@@ -173,19 +173,6 @@ export default function Sidebar({
 
         {/* Action Controls */}
         <div className="flex items-center gap-5 text-[#54656f]">
-          {/* Live Orders Board Trigger */}
-          <button 
-            onClick={() => onViewModeChange(viewMode === 'chat' ? 'orders' : 'chat')}
-            className={`p-1.5 rounded-full cursor-pointer transition-colors border-0 flex items-center justify-center ${
-              viewMode === 'orders' 
-                ? 'bg-[#00a884]/15 text-[#00a884] shadow-xs' 
-                : 'hover:bg-[#d9dbd9]/60 text-amber-600 hover:text-amber-700'
-            }`}
-            title="סידור עבודה ולוח הזמנות חי"
-          >
-            <LayoutDashboard className="w-5.5 h-5.5" />
-          </button>
-
           {/* Tasks Trigger */}
           <button 
             onClick={onOpenTasks}
@@ -232,13 +219,6 @@ export default function Sidebar({
                 {/* Backdrop overlay to close dropdown safely */}
                 <div className="fixed inset-0 z-10" onClick={() => setShowDropdown(false)} />
                 <div className="absolute left-0 mt-2.5 w-52 bg-white rounded-lg shadow-xl py-1.5 z-20 border border-gray-100 text-right text-sm">
-                  <button 
-                    onClick={() => { onViewModeChange(viewMode === 'chat' ? 'orders' : 'chat'); setShowDropdown(false); }}
-                    className="w-full text-right px-4 py-2.5 hover:bg-gray-50 flex items-center gap-3 text-emerald-600 font-semibold bg-transparent border-b border-gray-100 cursor-pointer"
-                  >
-                    <LayoutDashboard className="w-4 h-4 text-[#00a884]" />
-                    <span>{viewMode === 'chat' ? 'סידור עבודה חי 🏗️' : 'שיחות מסנג׳ר 💬'}</span>
-                  </button>
                   <button 
                     onClick={() => { onOpenNewChat(); setShowDropdown(false); }}
                     className="w-full text-right px-4 py-2.5 hover:bg-gray-50 flex items-center gap-3 text-gray-700 font-normal bg-transparent border-0 cursor-pointer"
@@ -298,6 +278,33 @@ export default function Sidebar({
           className="text-[#111b21]/60 hover:text-black hover:bg-black/5 rounded p-0.5 cursor-pointer bg-transparent border-0 absolute top-2 left-2"
         >
           <X className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* 3D Modern Navigation Tabs - Chats vs. Orders Board */}
+      <div className="p-3 bg-slate-50 border-b border-gray-200/85 flex items-center gap-3 select-none">
+        <button
+          onClick={() => onSelectView('chats')}
+          className={`flex-1 py-2 px-3 text-xs font-bold transition-all duration-200 transform rounded-xl cursor-pointer flex items-center justify-center gap-2 border ${
+            currentView === 'chats'
+              ? 'bg-[#00a884] text-white shadow-md border-[#00a884] font-black -translate-y-0.5'
+              : 'bg-white hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 active:shadow-inner text-slate-600 border-slate-200'
+          }`}
+        >
+          <MessageSquare className="w-4 h-4" />
+          <span>צ'אטים ושיחות</span>
+        </button>
+
+        <button
+          onClick={() => onSelectView('orders')}
+          className={`flex-1 py-2 px-3 text-xs font-bold transition-all duration-200 transform rounded-xl cursor-pointer flex items-center justify-center gap-2 border ${
+            currentView === 'orders'
+              ? 'bg-[#007AFF] text-white shadow-md border-[#007AFF] font-black -translate-y-0.5'
+              : 'bg-white hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 active:shadow-inner text-slate-600 border-slate-200'
+          }`}
+        >
+          <Truck className="w-4 h-4 animate-pulse" />
+          <span>לוח הזמנות 🚚</span>
         </button>
       </div>
 

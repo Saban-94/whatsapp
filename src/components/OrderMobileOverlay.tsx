@@ -390,6 +390,7 @@ ${editedItems || 'אין פריטים להצגה'}`;
                   <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/60">
                     <label className="block text-xs font-bold text-slate-500 mb-1.5">עדכון סטטוס ההזמנה במערכת:</label>
                     <select
+                      id="status-options-dropdown"
                       value={editedStatus}
                       onChange={(e) => {
                         const val = e.target.value;

@@ -366,11 +366,22 @@ export default function ChatWindow({
               <img src={chat.avatar || undefined} alt={chat.name} className="w-10 h-10 rounded-full object-cover shadow-sm" />
               <div className="text-right">
                 <span className="font-semibold text-[15px] text-gray-900 block leading-tight">{chat.name}</span>
-                <span className={`text-[12px] block mt-0.5 ${chat.isTyping ? 'text-[#007AFF] font-medium animate-pulse' : 'text-gray-500'}`}>
-                  {chat.isTyping 
-                    ? (chat.isGroup && chat.typingUser ? `User ${chat.typingUser} is typing...` : 'מקליד/ה...') 
-                    : chat.statusText}
-                </span>
+                <div className="h-4 overflow-hidden relative mt-0.5 min-w-[120px]">
+                  <AnimatePresence mode="wait" initial={false}>
+                    <motion.span
+                      key={chat.isTyping ? 'typing' : `status-${chat.statusText || ''}`}
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -6 }}
+                      transition={{ duration: 0.18, ease: "easeOut" }}
+                      className={`text-[12px] block absolute right-0 left-0 text-right ${chat.isTyping ? 'text-[#007AFF] font-medium' : 'text-gray-500'}`}
+                    >
+                      {chat.isTyping 
+                        ? (chat.isGroup && chat.typingUser ? `User ${chat.typingUser} is typing...` : 'מקליד/ה...') 
+                        : chat.statusText}
+                    </motion.span>
+                  </AnimatePresence>
+                </div>
               </div>
             </div>
           </div>

@@ -62,6 +62,30 @@ export default function OrderMobileOverlay({
   const [editedItems, setEditedItems] = useState(order?.items || '');
   const [isSaving, setIsSaving] = useState(false);
 
+  // Exit safety warning states
+  const [pulseSaveBtn, setPulseSaveBtn] = useState(false);
+  const [showExitWarning, setShowExitWarning] = useState(false);
+
+  const handleAttemptClose = () => {
+    const isStatusModified = editedStatus !== order.status;
+    const isDirty = isStatusModified || 
+                    editedDriverId !== order.driverId || 
+                    editedEta !== (order.eta || '') || 
+                    editedItems !== (order.items || '');
+
+    if (isEditing && isDirty) {
+      setPulseSaveBtn(true);
+      setShowExitWarning(true);
+      // reset pulsing look after animation duration
+      setTimeout(() => {
+        setPulseSaveBtn(false);
+      }, 1500);
+      return;
+    }
+    // No changes or not in editing mode, safe to exit
+    onClose();
+  };
+
   // Keep internal states in sync if order prop changes
   useEffect(() => {
     if (order) {
@@ -69,6 +93,8 @@ export default function OrderMobileOverlay({
       setEditedDriverId(order.driverId || '');
       setEditedEta(order.eta || '');
       setEditedItems(order.items || '');
+      setShowExitWarning(false);
+      setPulseSaveBtn(false);
     }
   }, [order]);
 
@@ -126,6 +152,8 @@ export default function OrderMobileOverlay({
       if (onUpdateItems && editedItems !== order.items) {
         await onUpdateItems(order.id, editedItems);
       }
+      setShowExitWarning(false);
+      setPulseSaveBtn(false);
       setIsEditing(false);
     } catch (e) {
       console.error("Failed to update order in mobile overlay", e);
@@ -143,7 +171,7 @@ export default function OrderMobileOverlay({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={onClose}
+            onClick={handleAttemptClose}
             className="absolute inset-0 bg-slate-900/60 backdrop-blur-md transition-opacity"
           />
 
@@ -170,12 +198,36 @@ export default function OrderMobileOverlay({
               </div>
               
               <button 
-                onClick={onClose}
+                onClick={handleAttemptClose}
                 className="w-10 h-10 bg-slate-100 hover:bg-slate-200/80 rounded-full flex items-center justify-center text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
+
+            {/* Warning Toast Notification when closing with modified fields */}
+            <AnimatePresence>
+              {showExitWarning && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.25 }}
+                  className="bg-amber-550 bg-amber-500 text-white font-bold p-3 text-xs flex items-center justify-between shadow-md border-b border-amber-600 font-sans shrink-0"
+                >
+                  <div className="flex items-center gap-2">
+                    <span>⚠️</span>
+                    <span>ישנם שימושים משתנים שלא נשמרו! הקש "שמור שינויים" או "ביטול" כדי לצאת.</span>
+                  </div>
+                  <button 
+                    onClick={() => setShowExitWarning(false)}
+                    className="bg-white/25 hover:bg-white/40 text-white rounded-lg px-2 py-0.5"
+                  >
+                    הבנתי
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Scrollable Main Information Form */}
             <div className="flex-1 overflow-y-auto p-6 space-y-6 pb-28">
@@ -374,10 +426,18 @@ export default function OrderMobileOverlay({
               <div className="flex items-center gap-3">
                 {isEditing ? (
                   <>
-                    <button
+                    <motion.button
+                      id="save-changes-btn"
                       onClick={handleSaveChanges}
                       disabled={isSaving}
-                      className="flex-1 bg-[#00a884] hover:bg-[#008f6f] disabled:opacity-50 text-white font-bold py-3 rounded-2xl flex items-center justify-center gap-2 shadow-sm cursor-pointer select-none text-sm transition-all"
+                      animate={pulseSaveBtn ? {
+                        scale: [1, 1.05, 0.95, 1.05, 1],
+                        backgroundColor: ["#00a884", "#f59e0b", "#f59e0b", "#00a884"]
+                      } : {}}
+                      transition={{ duration: 0.60, repeat: pulseSaveBtn ? 2 : 0 }}
+                      className={`flex-1 disabled:opacity-50 text-white font-bold py-3 rounded-2xl flex items-center justify-center gap-2 shadow-sm cursor-pointer select-none text-sm transition-all ${
+                        pulseSaveBtn ? 'ring-4 ring-amber-400 bg-amber-500 shadow-md shadow-amber-500/20' : 'bg-[#00a884] hover:bg-[#008f6f]'
+                      }`}
                     >
                       {isSaving ? (
                         <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -385,9 +445,17 @@ export default function OrderMobileOverlay({
                         <Check className="w-4.5 h-4.5" />
                       )}
                       <span>שמור שינויים</span>
-                    </button>
+                    </motion.button>
                     <button
-                      onClick={() => setIsEditing(false)}
+                      onClick={() => {
+                        setEditedStatus(order.status);
+                        setEditedDriverId(order.driverId || '');
+                        setEditedEta(order.eta || '');
+                        setEditedItems(order.items || '');
+                        setShowExitWarning(false);
+                        setPulseSaveBtn(false);
+                        setIsEditing(false);
+                      }}
                       className="px-5 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-2xl cursor-pointer text-sm transition-colors"
                     >
                       ביטול

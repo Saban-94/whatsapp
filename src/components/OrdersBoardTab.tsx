@@ -121,7 +121,7 @@ function MetricCard({
         borderWidth: "1px",
         borderColor: "rgba(255, 255, 255, 1)",
       },
-      "חסר נהג": { marginLeft: "auto" },
+      " חכמת": { marginLeft: "auto" },
     };
     return styleMap[lbl] || {};
   };

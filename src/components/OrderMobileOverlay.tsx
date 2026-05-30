@@ -13,6 +13,7 @@ import {
   Sparkles, 
   ClipboardEdit, 
   Check, 
+  Copy,
   Compass, 
   ArrowLeftRight,
   MessageSquareCode
@@ -92,6 +93,7 @@ export default function OrderMobileOverlay({
   // Exit safety warning states
   const [pulseSaveBtn, setPulseSaveBtn] = useState(false);
   const [showExitWarning, setShowExitWarning] = useState(false);
+  const [copySuccess, setCopySuccess] = useState(false);
 
   const handleAttemptClose = () => {
     if (isEditing && isDirty) {
@@ -162,6 +164,28 @@ export default function OrderMobileOverlay({
   };
 
   const currentDriver = drivers.find(d => d.id === order.driverId);
+
+  const handleCopySummary = async () => {
+    if (!order) return;
+    try {
+      const statusText = getStatusLabel(editedStatus);
+      const driverName = getDriverName(editedDriverId);
+      const summaryString = `*סיכום עדכון הזמנה #${order.orderNumber || order.id.slice(0, 5)}*
+👤 *לקוח:* ${order.customerName}
+📍 *כתובת יעד:* ${order.destination || 'לא מוגדר'}
+🔄 *סטטוס:* ${statusText}
+🚚 *נהג:* ${driverName}
+🕒 *זמן הגעה (ETA):* ${editedEta || 'לא מוגדר'}
+📦 *פירוט פריטים וציוד:*
+${editedItems || 'אין פריטים להצגה'}`;
+
+      await navigator.clipboard.writeText(summaryString);
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy text: ', err);
+    }
+  };
 
   const handleSaveChanges = async () => {
     setIsSaving(true);
@@ -334,6 +358,29 @@ export default function OrderMobileOverlay({
                       className="w-full text-sm bg-white border border-slate-300 rounded-lg px-3 py-2 leading-relaxed"
                     />
                   </div>
+
+                  {/* Copy Summary Button */}
+                  <button
+                    type="button"
+                    onClick={handleCopySummary}
+                    className={`w-full py-3 px-4 rounded-2xl border flex items-center justify-center gap-2 text-xs font-bold transition-all select-none cursor-pointer ${
+                      copySuccess 
+                        ? 'bg-emerald-50 border-emerald-300 text-emerald-700 shadow-sm' 
+                        : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700 active:scale-[0.98]'
+                    }`}
+                  >
+                    {copySuccess ? (
+                      <>
+                        <Check className="w-4 h-4 text-emerald-600 animate-pulse" />
+                        <span>הסיכום הועתק ללוח הזכרון (Clipboard)! ✓</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-4 h-4 text-slate-500" />
+                        <span>העתק סיכום תעודה מהיר 📋</span>
+                      </>
+                    )}
+                  </button>
                 </div>
               ) : (
                 <div className="space-y-5" id="order-mobile-details-view">

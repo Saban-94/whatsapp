@@ -17,7 +17,8 @@ import {
   Trash2,
   Info,
   Layers,
-  History
+  History,
+  Printer
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -31,6 +32,122 @@ export default function HistoryDrawer({ onClose, dir, onOpenNoaChat }: HistoryDr
   const [orders, setOrders] = useState<Order[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+
+  const handlePrint = () => {
+    // Generate clear, printable document styled nicely for print
+    const printContainer = document.createElement('div');
+    printContainer.id = 'print-manifest-container';
+    printContainer.dir = 'rtl';
+    printContainer.style.position = 'fixed';
+    printContainer.style.left = '0';
+    printContainer.style.top = '0';
+    printContainer.style.width = '100vw';
+    printContainer.style.height = '100vh';
+    printContainer.style.backgroundColor = 'white';
+    printContainer.style.zIndex = '999999';
+    printContainer.style.overflowY = 'auto';
+    printContainer.style.padding = '35px';
+    printContainer.style.fontFamily = 'system-ui, -apple-system, sans-serif';
+    printContainer.style.color = '#111b21';
+
+    // Print-specific style block to target print behaviors
+    const styleElement = document.createElement('style');
+    styleElement.innerHTML = `
+      @media print {
+        body > *:not(#print-manifest-container) {
+          display: none !important;
+        }
+        #print-manifest-container {
+          position: absolute !important;
+          left: 0 !important;
+          top: 0 !important;
+          width: 100% !important;
+          height: auto !important;
+          padding: 0 !important;
+          margin: 0 !important;
+          box-shadow: none !important;
+        }
+        tr {
+          page-break-inside: avoid !important;
+        }
+      }
+    `;
+    document.head.appendChild(styleElement);
+
+    const getCleanDriverName = (driverId: string) => {
+      if (driverId === 'hikmat') return 'חכמת (מנוף 10 מטר )';
+      if (driverId === 'ali') return 'עלי (משאית פריקה ידנית)';
+      return driverId || 'טרם שוייך נהג';
+    };
+
+    const rowsHtml = filteredOrders.map((order) => `
+      <tr style="border-bottom: 1px solid #e2e8f0; font-size: 11px;">
+        <td style="padding: 10px; font-weight: bold; font-family: monospace;">#${order.orderNumber || '0000'}</td>
+        <td style="padding: 10px; font-weight: bold;">${order.customerName}</td>
+        <td style="padding: 10px;">${order.destination}</td>
+        <td style="padding: 10px; font-weight: 500; font-size: 10px; line-height: 1.4;">${order.items}</td>
+        <td style="padding: 10px; font-weight: 600;">${getCleanDriverName(order.driverId)}</td>
+        <td style="padding: 10px;">${order.date} ${order.time}</td>
+        <td style="padding: 10px; color: #008069; font-weight: bold;">🟢 סופק</td>
+      </tr>
+    `).join('');
+
+    const todayStr = new Date().toLocaleDateString('he-IL', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+
+    printContainer.innerHTML = `
+      <div style="text-align: right; margin-bottom: 25px; border-bottom: 2px solid #008069; padding-bottom: 15px;">
+        <h1 style="color: #008069; margin: 0 0 5px 0; font-size: 24px; font-weight: 900;">ח. סבן עבודות עפר וחומרי בניין</h1>
+        <h2 style="color: #4a5568; margin: 0 0 15px 0; font-size: 16px; font-weight: bold;">📜 מניפסט ריכוז הזמנות שסופקו בהצלחה (ארכיון דיגיטלי)</h2>
+        <div style="display: flex; justify-content: space-between; font-size: 11px; color: #667781; font-weight: 500;">
+          <span>👤 הופק על ידי: <b>נועה - מנהלת המשרד הלוגיסטי (המפקד ראמי)</b></span>
+          <span>📅 תאריך הפקה: <b>${todayStr}</b></span>
+          <span>📦 סך הכל במניפסט: <b>${filteredOrders.length} משלוחים</b></span>
+        </div>
+      </div>
+
+      <table style="width: 100%; border-collapse: collapse; text-align: right; direction: rtl;">
+        <thead>
+          <tr style="background-color: #f0f2f5; border-bottom: 2px solid #cbd5e0; font-size: 11px; font-weight: bold; color: #111b21;">
+            <th style="padding: 12px 10px; text-align: right; width: 10%;">מזהה</th>
+            <th style="padding: 12px 10px; text-align: right; width: 22%;">שם הלקוח</th>
+            <th style="padding: 12px 10px; text-align: right; width: 20%;">יעד פריקה</th>
+            <th style="padding: 12px 10px; text-align: right; width: 25%;">פירוט המטען</th>
+            <th style="padding: 12px 10px; text-align: right; width: 13%;">נהג מפיץ</th>
+            <th style="padding: 12px 10px; text-align: right; width: 10%;">מועד הספקה</th>
+            <th style="padding: 12px 10px; text-align: right; width: 10%;">סטטוס</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rowsHtml || `<tr><td colspan="7" style="padding: 30px; text-align: center; color: #a0aec0;">אין נתונים להצגה במניפסט הנוכחי</td></tr>`}
+        </tbody>
+      </table>
+
+      <div style="margin-top: 50px; border-top: 1px dashed #e2e8f0; padding-top: 15px; text-align: center; font-size: 10px; color: #667781;">
+        <span>דוח החלטה פנימי לוגיסטי • מחובר בזמן אמת ל-Firestore ח. סבן • באדיבות נועה ❤️</span>
+      </div>
+    `;
+
+    document.body.appendChild(printContainer);
+
+    // Give browser a split second to render, then initiate print
+    setTimeout(() => {
+      window.print();
+      
+      // Cleanup printable element
+      if (document.body.contains(printContainer)) {
+        document.body.removeChild(printContainer);
+      }
+      if (document.head.contains(styleElement)) {
+        document.head.removeChild(styleElement);
+      }
+    }, 150);
+  };
 
   // Load delivered orders from Firestore in real-time
   useEffect(() => {
@@ -106,18 +223,33 @@ export default function HistoryDrawer({ onClose, dir, onOpenNoaChat }: HistoryDr
       
       {/* Drawer Header (WhatsApp styling matching Noa's branding) */}
       <div className="bg-[#008069] text-white min-h-[108px] flex items-end p-5 pb-4 shrink-0 shadow-md">
-        <div className="flex items-center gap-5 w-full font-medium">
-          <button 
-            onClick={onClose} 
-            id="history-drawer-close-btn"
-            className="hover:opacity-85 bg-transparent border-0 cursor-pointer text-white p-1 rounded-full hover:bg-white/10 transition-colors"
-          >
-            {dir === 'rtl' ? <ArrowRight className="w-6 h-6" /> : <ArrowLeft className="w-6 h-6" />}
-          </button>
-          <div className="flex items-center gap-2.5">
-            <History className="w-5 h-5 text-emerald-100" />
-            <span className="text-xl font-bold select-none tracking-tight">היסטוריית הזמנות שסופקו</span>
+        <div className="flex items-center justify-between w-full font-medium">
+          <div className="flex items-center gap-5">
+            <button 
+              onClick={onClose} 
+              id="history-drawer-close-btn"
+              className="hover:opacity-85 bg-transparent border-0 cursor-pointer text-white p-1 rounded-full hover:bg-white/10 transition-colors cursor-pointer"
+            >
+              {dir === 'rtl' ? <ArrowRight className="w-6 h-6" /> : <ArrowLeft className="w-6 h-6" />}
+            </button>
+            <div className="flex items-center gap-2.5">
+              <History className="w-5 h-5 text-emerald-100" />
+              <span className="text-xl font-bold select-none tracking-tight">היסטוריית הזמנות שסופקו</span>
+            </div>
           </div>
+
+          {/* Export to PDF / Print Button */}
+          {filteredOrders.length > 0 && (
+            <button
+              onClick={handlePrint}
+              id="export-pdf-manifest-btn"
+              className="flex items-center gap-1.5 px-3 py-2 bg-[#00a884] hover:bg-[#008f70] text-white rounded-xl text-xs font-bold transition-all cursor-pointer border border-emerald-500 shadow-sm active:scale-95 shrink-0 select-none"
+              title="ייצוא מניפסט PDF"
+            >
+              <Printer className="w-4 h-4 text-emerald-100" />
+              <span>יצא מניפסט PDF</span>
+            </button>
+          )}
         </div>
       </div>
 

@@ -36,6 +36,7 @@ import { doc, updateDoc } from 'firebase/firestore';
 import { Virtuoso } from 'react-virtuoso';
 import { MessageBubble } from './MessageBubble';
 import { useNoaBrain } from '../hooks/useNoaBrain';
+import { MediaGallery } from './ChatInfoDrawer';
 
 // דרישות לממשק הפרופס
 interface ChatWindowProps {
@@ -969,91 +970,8 @@ export default function ChatWindow({
               <div className="bg-white px-6 py-4 border-b border-gray-100 flex flex-col">
                 <div className="flex items-center justify-between mb-3 select-none">
                   <span className="text-[14px] text-[#111b21] font-semibold">מדיה וקבצים JONI</span>
-                  <span className="text-[11px] font-bold text-[#008069] px-2 py-0.5 bg-[#e2efeb] rounded-full">
-                    {mediaImages.length + mediaDocs.length} פריטים
-                  </span>
                 </div>
-
-                {/* Sub Tab selection */}
-                <div className="flex bg-gray-100 rounded-lg p-0.5 mb-3.5 select-none text-[11px] font-medium">
-                  <button
-                    onClick={() => setActiveMediaTab('images')}
-                    className={`flex-1 text-center py-1.5 rounded-md transition-all cursor-pointer border-0 ${
-                      activeMediaTab === 'images' ? 'bg-[#008069] text-white shadow-xs font-semibold' : 'text-gray-600 bg-transparent hover:text-gray-900'
-                    }`}
-                  >
-                    תמונות וסרטונים ({mediaImages.length})
-                  </button>
-                  <button
-                    onClick={() => setActiveMediaTab('docs')}
-                    className={`flex-1 text-center py-1.5 rounded-md transition-all cursor-pointer border-0 ${
-                      activeMediaTab === 'docs' ? 'bg-[#008069] text-white shadow-xs font-semibold' : 'text-gray-600 bg-transparent hover:text-gray-900'
-                    }`}
-                  >
-                    מסמכים ({mediaDocs.length})
-                  </button>
-                </div>
-
-                {/* Media contents list/grid */}
-                {activeMediaTab === 'images' ? (
-                  mediaImages.length === 0 ? (
-                    <div className="py-8 text-center text-xs text-gray-400 select-none flex flex-col items-center justify-center gap-1.5 bg-gray-50 rounded-xl border border-dashed border-gray-200/80">
-                      <Image className="w-7 h-7 text-gray-300 stroke-1" />
-                      <span>אין תמונות או סרטונים בשיחה זו</span>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-3 gap-2 max-h-[280px] overflow-y-auto pr-1">
-                      {mediaImages.map((msg) => (
-                        <div 
-                          key={msg.id}
-                          className="relative aspect-square rounded-lg overflow-hidden border border-gray-150 bg-gray-100 group/item cursor-pointer"
-                          onClick={() => handleDownloadFile(msg.mediaUrl, msg.text)}
-                          title="לחץ להורדה מיידית"
-                        >
-                          <img 
-                            src={msg.mediaUrl || undefined} 
-                            alt={msg.text} 
-                            className="w-full h-full object-cover group-hover/item:scale-105 transition-transform duration-250" 
-                          />
-                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/item:opacity-100 flex items-center justify-center transition-all">
-                            <Download className="w-5 h-5 text-white" />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )
-                ) : (
-                  mediaDocs.length === 0 ? (
-                    <div className="py-8 text-center text-xs text-gray-400 select-none flex flex-col items-center justify-center gap-1.5 bg-gray-50 rounded-xl border border-dashed border-gray-200/80">
-                      <File className="w-7 h-7 text-gray-300 stroke-1" />
-                      <span>אין מסמכים בשיחה זו</span>
-                    </div>
-                  ) : (
-                    <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
-                      {mediaDocs.map((msg) => (
-                        <div 
-                          key={msg.id}
-                          onClick={() => handleDownloadFile(msg.mediaUrl, msg.text)}
-                          className="flex items-center gap-3 p-2 bg-gray-50/50 hover:bg-gray-100 border border-gray-150 rounded-lg transition-colors cursor-pointer text-right group/d"
-                          title="לחץ להורדה"
-                        >
-                          <div className="w-8 h-8 rounded bg-[#efeff4] text-[#007AFF] flex items-center justify-center font-bold text-xs shrink-0 select-none border border-gray-200">
-                            <File className="w-4 h-4 text-[#007AFF]" />
-                          </div>
-                          <div className="flex-1 min-w-0 pr-0.5">
-                            <p className="text-xs font-semibold text-gray-800 truncate leading-tight" title={msg.text}>{msg.text}</p>
-                            <span className="text-[9px] text-gray-400 font-mono block mt-1">{msg.timestamp}</span>
-                          </div>
-                          <button 
-                            className="p-1 px-1.5 bg-white border border-gray-200 group-hover/d:border-[#007AFF] text-gray-500 group-hover/d:text-[#007AFF] rounded shrink-0 transition-colors flex items-center justify-center shadow-2xs"
-                          >
-                            <Download className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )
-                )}
+                <MediaGallery messages={chat.messages} handleDownloadFile={handleDownloadFile} />
               </div>
 
               {/* Encryption Notice */}

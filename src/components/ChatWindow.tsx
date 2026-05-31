@@ -243,17 +243,39 @@ export default function ChatWindow({
   }, [voicePlayingId]);
 
   const virtuosoRef = useRef<any>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // גלילה אוטומטית למטה בעזרת מנוע ה-Virtuoso
+  // גלילה אוטומטית למטה מעודכנת להתמודדות עם רכיבי HTML עשירים וגירסאות שונות של גודל תוכן
   useEffect(() => {
-    if (virtuosoRef.current && chat?.messages && chat.messages.length > 0) {
-      setTimeout(() => {
-        virtuosoRef.current?.scrollToIndex({
-          index: chat.messages.length - 1,
-          align: 'end',
-          behavior: 'smooth'
-        });
-      }, 80);
+    if (chat?.messages && chat.messages.length > 0) {
+      const triggerScroll = () => {
+        // 1. גלילה ישירה של Virtuoso (מהירה)
+        if (virtuosoRef.current) {
+          virtuosoRef.current.scrollToIndex({
+            index: chat.messages.length - 1,
+            align: 'end',
+            behavior: 'smooth'
+          });
+        }
+        // 2. גלילה על בסיס ה-Ref של סוף הרכיבים (אמינה עבור אלמנטים דינמיים מורכבים)
+        if (messagesEndRef.current) {
+          messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        }
+      };
+
+      // הפעלה מיידית
+      triggerScroll();
+
+      // הפעלות מדורגות כדי לאפשר לכל התמונות, רכיבי ה-HTML המותאמים של נועה והסידורים הדינמיים להיטען ולהתייצב
+      const timer1 = setTimeout(triggerScroll, 80);
+      const timer2 = setTimeout(triggerScroll, 300);
+      const timer3 = setTimeout(triggerScroll, 850);
+
+      return () => {
+        clearTimeout(timer1);
+        clearTimeout(timer2);
+        clearTimeout(timer3);
+      };
     }
   }, [chat?.messages?.length, chat?.isTyping]);
 
@@ -587,6 +609,9 @@ export default function ChatWindow({
                     <span>ההודעות מוצפנות ומשותפות אוטומטית דרך JONI</span>
                   </div>
                 </div>
+              ),
+              Footer: () => (
+                <div ref={messagesEndRef} style={{ height: '2px' }} className="w-full" />
               )
             }}
             itemContent={(_index, msg) => (

@@ -214,8 +214,6 @@ function OrderCard({
                 }`}
               >
                 <option value="">לא משויך</option>
-                <option value="hikmat">חכמת (מנוף)</option>
-                <option value="ali">עלי (משאית)</option>
                 {drivers.map((drv) => (
                   <option key={drv.id} value={drv.name}>{drv.name}</option>
                 ))}

@@ -388,9 +388,21 @@ ${editedItems || 'אין פריטים להצגה'}`;
                   
                   {/* Status Selection */}
                   <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/60">
-                    <label className="block text-xs font-bold text-slate-500 mb-1.5 font-sans">עדכון סטטוס ההזמנה במערכת:</label>
+                    <div className="flex items-center justify-between mb-1.5 select-none">
+                      <label className="block text-xs font-bold text-slate-500 font-sans">עדכון סטטוס ההזמנה במערכת:</label>
+                      {editedStatus === 'ready' && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-purple-100 text-purple-700 animate-pulse border border-purple-200 shadow-xs">
+                          <span className="w-1.5 h-1.5 rounded-full bg-purple-600 animate-ping"></span>
+                          <span>מוכן להעמסה דחוף!</span>
+                        </span>
+                      )}
+                    </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-xl bg-white border border-slate-200 rounded-lg w-11 h-10 flex items-center justify-center shadow-xs select-none border-dashed border-[#00a884] shrink-0">
+                      <span className={`text-xl bg-white border rounded-lg w-11 h-10 flex items-center justify-center shadow-xs select-none shrink-0 transition-all ${
+                        editedStatus === 'ready' 
+                          ? 'animate-pulse ring-2 ring-purple-400 bg-purple-50 border-purple-300' 
+                          : 'border-slate-200 border-dashed border-[#00a884]'
+                      }`}>
                         {editedStatus === 'pending' && '⏳'}
                         {editedStatus === 'preparing' && '🛠️'}
                         {editedStatus === 'ready' && '📦'}
@@ -415,12 +427,12 @@ ${editedItems || 'אין פריטים להצגה'}`;
                         }}
                         className="w-full text-sm font-semibold bg-white border border-slate-300 rounded-lg px-3 py-2.5 focus:ring-1 focus:ring-[#00a884] focus:border-[#00a884] cursor-pointer"
                       >
-                        <option value="pending" className="text-amber-700 font-sans">⏳ בהמתנה (Pending)</option>
-                        <option value="preparing" className="text-blue-700 font-sans">🛠️ בהכנה במחסן (Preparing)</option>
-                        <option value="ready" className="text-purple-700 font-sans">📦 מוכן להעמסה (Ready)</option>
-                        <option value="on_the_way" className="text-cyan-700 font-sans">🚚 בדרך לשטח (On the way)</option>
-                        <option value="delivered" className="text-emerald-700 font-sans">✅ נמסר וסופק (Delivered)</option>
-                        <option value="cancelled" className="text-rose-700 font-sans">❌ מבוטל (Cancelled)</option>
+                        <option value="pending" className="text-amber-700 font-sans">⏳ 🟡 בהמתנה לסנכרון (Pending)</option>
+                        <option value="preparing" className="text-blue-700 font-sans">🛠️ 🔵 בהכנה וליקוט (Preparing)</option>
+                        <option value="ready" className="text-purple-700 font-sans">📦 🟣 מוכן להעמסה דחוף (Ready)</option>
+                        <option value="on_the_way" className="text-cyan-700 font-sans">🚚 🟢 בדרך לאתר השטח (On the way)</option>
+                        <option value="delivered" className="text-emerald-700 font-sans">✅ 🟢 נמסר וסופק בהצלחה (Delivered)</option>
+                        <option value="cancelled" className="text-rose-700 font-sans">❌ 🔴 מבוטל / נדחה (Cancelled)</option>
                       </select>
                     </div>
                   </div>

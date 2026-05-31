@@ -114,7 +114,7 @@ function MetricCard({
       whileHover={{ y: -4, scale: 1.02 }}
       whileTap={{ y: 0, scale: 0.98 }}
       style={{ ...buttonStyles, opacity: 1 }}
-      className={`relative overflow-hidden rounded-2xl p-4 text-right transition-all duration-300 cursor-pointer border-0
+      className={`relative overflow-hidden rounded-2xl p-4 text-right transition-all duration-300 cursor-pointer border-0 shrink-0 min-w-[140px] md:min-w-0 snap-start
         ${active ? `bg-gradient-to-br ${accentColor} shadow-lg ring-1 ring-white/20` : "bg-gray-100 hover:bg-gray-200 dark:bg-gray-800"}`}
     >
       <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none" />
@@ -134,12 +134,13 @@ function MetricCard({
 
 // --- V0 Order Card Component (Connected to Firebase Props) ---
 function OrderCard({
-  order, drivers, onUpdate,
+  order, drivers, onUpdate, onOpenNoaChat,
 }: {
   key?: string;
   order: Order;
   drivers: Driver[];
   onUpdate: (id: string, field: keyof Order, value: string) => any;
+  onOpenNoaChat?: (order: any) => void;
 }) {
   const status = statusConfig[order.status] || statusConfig.pending;
   const assignedDriver = drivers.find((d) => d.id === order.driverId || d.name === order.driverId);
@@ -223,24 +224,36 @@ function OrderCard({
         </div>
 
         {/* Footer Status */}
-        <div className="px-5 py-3 bg-gray-50 dark:bg-white/5 border-t border-gray-100 dark:border-white/5 flex items-center justify-between">
+        <div className="px-5 py-3 bg-gray-50 dark:bg-white/5 border-t border-gray-100 dark:border-white/5 flex items-center justify-between gap-2">
           <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r ${status.color}`}>
             {status.icon}
             <span className="text-xs font-bold text-gray-800 dark:text-white">{status.label}</span>
           </div>
 
-          <select
-            value={order.status}
-            onChange={(e) => onUpdate(order.id, 'status', e.target.value)}
-            className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-white/10 rounded-xl py-2 px-3 text-xs font-bold focus:ring-2 focus:ring-blue-500 cursor-pointer shadow-sm"
-          >
-            <option value="pending">ממתין</option>
-            <option value="preparing">בהכנה</option>
-            <option value="ready">מוכן</option>
-            <option value="on_the_way">בדרך</option>
-            <option value="delivered">נמסר</option>
-            <option value="cancelled">בוטל</option>
-          </select>
+          <div className="flex items-center gap-1.5">
+            {onOpenNoaChat && (
+              <button
+                onClick={() => onOpenNoaChat(order)}
+                title="שאל את נועה"
+                id={`ask-noa-btn-${order.id}`}
+                className="p-2 hover:bg-rose-50 hover:text-rose-600 border border-gray-200 dark:border-white/10 rounded-xl text-gray-550 transition-colors cursor-pointer bg-white dark:bg-gray-850 flex items-center justify-center shadow-xs"
+              >
+                <Sparkles className="w-4 h-4 text-rose-500 shrink-0" />
+              </button>
+            )}
+            <select
+              value={order.status}
+              onChange={(e) => onUpdate(order.id, 'status', e.target.value)}
+              className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-white/10 rounded-xl py-2 px-3 text-xs font-bold focus:ring-2 focus:ring-blue-500 cursor-pointer shadow-sm"
+            >
+              <option value="pending">ממתין</option>
+              <option value="preparing">בהכנה</option>
+              <option value="ready">מוכן</option>
+              <option value="on_the_way">בדרך</option>
+              <option value="delivered">נמסר</option>
+              <option value="cancelled">בוטל</option>
+            </select>
+          </div>
         </div>
       </div>
     </motion.div>
@@ -248,7 +261,13 @@ function OrderCard({
 }
 
 // --- Main App Component ---
-export default function OrdersBoardTab() {
+export default function OrdersBoardTab({
+  onOpenNoaChat,
+  onBack,
+}: {
+  onOpenNoaChat?: (order: any) => void;
+  onBack?: () => void;
+}) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([
     { id: 'hikmat', name: 'חכמת (מנוף 10 מטר )', phone: '053-2316985'},
@@ -301,14 +320,26 @@ export default function OrdersBoardTab() {
   });
 
   return (
-    <div className="min-h-screen bg-gray-50/50 dark:bg-gray-950" dir="rtl">
+    <div className="h-full overflow-y-auto bg-gray-50/50 dark:bg-gray-950 scroll-smooth" id="orders-board-scroll-container" dir="rtl">
       {/* Header */}
       <header className="sticky top-0 z-20 border-b border-gray-200 dark:border-white/5 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl">
         <div className="container mx-auto px-4 py-5">
           <div className="flex flex-col md:flex-row justify-between gap-4 mb-6">
-            <div>
-              <h1 className="text-2xl md:text-3xl font-black" style={{ backgroundColor: 'rgba(184, 212, 246, 1)', backgroundRepeat: 'no-repeat', backgroundPosition: 'center', backgroundSize: 'cover', color: 'rgba(189, 16, 224, 1)' }}>לוח סידור</h1>
-              <p className="text-sm" style={{ fontWeight: '600', borderWidth: '1px', borderColor: 'rgba(0, 0, 0, 0.45)' }}>מחובר בזמן אמת</p>
+            <div className="flex items-center gap-3">
+              {onBack && (
+                <button
+                  onClick={onBack}
+                  id="order-board-back-btn"
+                  className="p-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-xl cursor-pointer text-gray-700 dark:text-gray-200 md:hidden transition-all active:scale-95 border-0 flex items-center justify-center shadow-xs shrink-0"
+                  title="חזרה לשיחות"
+                >
+                  <Navigation className="w-5 h-5 rotate-90" />
+                </button>
+              )}
+              <div>
+                <h1 className="text-2xl md:text-3xl font-black" style={{ backgroundColor: 'rgba(184, 212, 246, 1)', backgroundRepeat: 'no-repeat', backgroundPosition: 'center', backgroundSize: 'cover', color: 'rgba(189, 16, 224, 1)' }}>לוח סידור</h1>
+                <p className="text-sm" style={{ fontWeight: '600', borderWidth: '1px', borderColor: 'rgba(0, 0, 0, 0.45)' }}>מחובר בזמן אמת</p>
+              </div>
             </div>
             <div className="relative w-full md:w-72">
               <Search className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -323,7 +354,7 @@ export default function OrdersBoardTab() {
           </div>
 
           {/* KPI Buttons */}
-          <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+          <div className="flex overflow-x-auto md:grid md:grid-cols-6 gap-3 pb-2.5 -mx-4 px-4 md:mx-0 md:px-0 scrollbar-none snap-x snap-mandatory scroll-smooth" id="order-board-tabs-scrollable">
             <MetricCard label="כל ההזמנות" value={totalCount} icon={<Package className="w-4 h-4" />} active={activeFilter === "all"} onClick={() => setActiveFilter("all")} accentColor="from-gray-500/20 to-gray-600/10" />
             <MetricCard label="פעילות בשטח" value={totalCount - deliveredCount} icon={<Zap className="w-4 h-4" />} active={activeFilter === "active"} onClick={() => setActiveFilter("active")} accentColor="from-blue-500/20 to-purple-600/10" />
             <MetricCard label="בהכנה" value={preparingCount} icon={<Building className="w-4 h-4 text-cyan-500" />} active={activeFilter === "preparing"} onClick={() => setActiveFilter("preparing")} accentColor="from-cyan-500/20 to-cyan-600/10" />
@@ -344,7 +375,7 @@ export default function OrdersBoardTab() {
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             <AnimatePresence mode="popLayout">
               {filteredOrders.map((order) => (
-                <OrderCard key={order.id} order={order} drivers={drivers} onUpdate={handleUpdate} />
+                <OrderCard key={order.id} order={order} drivers={drivers} onUpdate={handleUpdate} onOpenNoaChat={onOpenNoaChat} />
               ))}
             </AnimatePresence>
           </div>

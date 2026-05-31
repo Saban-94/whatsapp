@@ -31,7 +31,8 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { Chat, Message, UserProfile } from '../types';
 import DoodleBackground from './DoodleBackground';
-import { storage } from '../lib/firebase';
+import { storage, db } from '../lib/firebase';
+import { doc, updateDoc } from 'firebase/firestore';
 import { Virtuoso } from 'react-virtuoso';
 import { MessageBubble } from './MessageBubble';
 import { useNoaBrain } from '../hooks/useNoaBrain';
@@ -109,6 +110,106 @@ export default function ChatWindow({
     setCopyStatus(true);
     setTimeout(() => setCopyStatus(false), 2000);
   };
+
+  // States for interactively managing orders status and drivers actions
+  const [activeActionOrderId, setActiveActionOrderId] = useState<string | null>(null);
+  const [activeActionType, setActiveActionType] = useState<'driver-select' | 'status-select' | null>(null);
+
+  const driversInApp = [
+    { id: 'hezi', name: 'חזי (סיירת)', phone: '054-1111111' },
+    { id: 'sami', name: 'סאמי (מובילים כבדים)', phone: '054-2222222' },
+    { id: 'avi', name: 'אבי (מחסן ותובלה)', phone: '054-3333333' },
+    { id: 'shimon', name: 'שמעון (ג׳וני הובלות)', phone: '054-4444444' }
+  ];
+
+  const statusChoices = [
+    { value: 'pending', label: 'ממתין ⏳' },
+    { value: 'preparing', label: 'בהכנה 🛠️' },
+    { value: 'ready', label: 'מוכן לעליה 📦' },
+    { value: 'on_the_way', label: 'בדרך 🚚' },
+    { value: 'delivered', label: 'נמסר ✅' },
+    { value: 'cancelled', label: 'בוטל ❌' }
+  ];
+
+  const handleSelectDriver = async (driverId: string) => {
+    if (!activeActionOrderId) return;
+    try {
+      const orderRef = doc(db, 'orders', activeActionOrderId);
+      await updateDoc(orderRef, {
+        driverId: driverId,
+        eta: '', // Reset original ETA
+        updatedAt: new Date().toISOString()
+      });
+    } catch (err) {
+      console.error("Failed to assign driver in Firestore:", err);
+    } finally {
+      setActiveActionOrderId(null);
+      setActiveActionType(null);
+    }
+  };
+
+  const handleSelectStatus = async (statusValue: string) => {
+    if (!activeActionOrderId) return;
+    try {
+      const orderRef = doc(db, 'orders', activeActionOrderId);
+      await updateDoc(orderRef, {
+        status: statusValue,
+        eta: '', // Reset original ETA
+        updatedAt: new Date().toISOString()
+      });
+    } catch (err) {
+      console.error("Failed to update status in Firestore:", err);
+    } finally {
+      setActiveActionOrderId(null);
+      setActiveActionType(null);
+    }
+  };
+
+  // Listen to 'noa-action' events dispatched by interactive components
+  useEffect(() => {
+    const handleNoaActionEvent = async (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (!customEvent.detail) return;
+      
+      const { action, orderId, field, value } = customEvent.detail;
+      
+      if (action === 'update-order') {
+        const targetId = orderId || activeActionOrderId;
+        if (!targetId) return;
+        try {
+          const orderRef = doc(db, 'orders', targetId);
+          const updateData: any = {
+            updatedAt: new Date().toISOString()
+          };
+          
+          if (field === 'status') {
+            updateData.status = value;
+            updateData.eta = ''; // Reset ETA
+          } else if (field === 'driverId') {
+            updateData.driverId = value;
+            updateData.eta = ''; // Reset ETA
+          } else {
+            updateData[field] = value;
+          }
+          
+          await updateDoc(orderRef, updateData);
+        } catch (err) {
+          console.error("Failed to update order via direct action:", err);
+        }
+      } else if (action === 'open-driver-select') {
+        setActiveActionOrderId(orderId);
+        setActiveActionType('driver-select');
+      } else if (action === 'open-status-select') {
+        setActiveActionOrderId(orderId);
+        setActiveActionType('status-select');
+      }
+    };
+    
+    window.addEventListener('noa-action', handleNoaActionEvent);
+    return () => {
+      window.removeEventListener('noa-action', handleNoaActionEvent);
+    };
+  }, [activeActionOrderId]);
 
   // Auto reset delete confirmation when header menu is toggled off
   useEffect(() => {
@@ -942,6 +1043,82 @@ export default function ChatWindow({
           </div>
         </div>
       )}
+
+      {/* Popup/Modal for Update Status or Assign Driver */}
+      <AnimatePresence>
+        {activeActionType && activeActionOrderId && (
+          <div className="fixed inset-0 z-55 flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => { setActiveActionOrderId(null); setActiveActionType(null); }}
+              className="absolute inset-0 bg-slate-900/40 backdrop-blur-xs"
+            />
+            
+            {/* Modal Card */}
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 15 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 15 }}
+              transition={{ type: 'spring', duration: 0.35 }}
+              className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden border border-slate-100 relative z-10 text-right"
+              dir="rtl"
+            >
+              {/* Header */}
+              <div className="px-5 py-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between select-none">
+                <h3 className="font-bold text-sm text-slate-800">
+                  {activeActionType === 'driver-select' ? 'שבץ נהג להזמנה 👤' : 'עדכן סטטוס הזמנה 🔄'}
+                </h3>
+                <button 
+                  onClick={() => { setActiveActionOrderId(null); setActiveActionType(null); }}
+                  className="p-1.5 hover:bg-slate-200 rounded-full text-slate-400 border-0 bg-transparent cursor-pointer transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              
+              {/* Content */}
+              <div className="p-5 max-h-[320px] overflow-y-auto space-y-2">
+                {activeActionType === 'driver-select' ? (
+                  driversInApp.map(d => (
+                    <button
+                      key={d.id}
+                      onClick={() => handleSelectDriver(d.id)}
+                      className="w-full text-right p-3 rounded-xl border border-slate-200 hover:border-[#3B82F6] hover:bg-blue-50/40 transition-all font-sans cursor-pointer flex items-center justify-between outline-none"
+                    >
+                      <div className="text-sm font-bold text-slate-800">{d.name}</div>
+                      <div className="text-xs text-slate-500 font-mono">{d.phone}</div>
+                    </button>
+                  ))
+                ) : (
+                  statusChoices.map(sc => (
+                    <button
+                      key={sc.value}
+                      onClick={() => handleSelectStatus(sc.value)}
+                      className="w-full text-right p-3 rounded-xl border border-slate-200 hover:border-[#3B82F6] hover:bg-blue-50/40 transition-all font-sans cursor-pointer flex items-center justify-between outline-none"
+                    >
+                      <div className="text-sm font-bold text-slate-800">{sc.label}</div>
+                      <div className="text-[10px] uppercase font-mono tracking-wider font-bold text-slate-400">{sc.value}</div>
+                    </button>
+                  ))
+                )}
+              </div>
+              
+              {/* Footer */}
+              <div className="px-5 py-3.5 bg-slate-50 border-t border-slate-100 text-left select-none">
+                <button
+                  onClick={() => { setActiveActionOrderId(null); setActiveActionType(null); }}
+                  className="px-4 py-1.5 text-xs font-semibold bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-lg cursor-pointer transition-all"
+                >
+                  ביטול
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

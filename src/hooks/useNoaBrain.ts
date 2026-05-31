@@ -47,6 +47,20 @@ export interface Customer {
   totalOrders: number;
 }
 
+export interface InventoryItem {
+  id: string;
+  sku: string;
+  name: string;
+  description?: string;
+  currentStock: number;
+  minStock: number;
+  unit: string;
+  price?: number;
+  category?: string;
+  imageUrl?: string;
+  updatedAt?: string;
+}
+
 const NOA_SYSTEM_PROMPT = `
 # Agent Instructions - SabanOS (Noa)
 
@@ -130,7 +144,37 @@ export function useNoaBrain() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [morningReports, setMorningReports] = useState<MorningReport[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const invCol = collection(db, 'inventory');
+    const unsubscribe = onSnapshot(invCol, (snapshot) => {
+      const list: InventoryItem[] = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        list.push({
+          id: doc.id,
+          sku: data.sku || '',
+          name: data.name || '',
+          description: data.description || '',
+          currentStock: Number(data.currentStock) || 0,
+          minStock: Number(data.minStock) || 0,
+          unit: data.unit || 'יח\'',
+          price: Number(data.price) || 0,
+          category: data.category || '',
+          imageUrl: data.imageUrl || '',
+          updatedAt: data.updatedAt || ''
+        });
+      });
+      setInventory(list);
+    }, (err) => {
+      console.warn('Inventory listener error:', err);
+      setInventory([]);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     const ordersCol = collection(db, 'orders');
@@ -365,7 +409,8 @@ export function useNoaBrain() {
             orders,
             customers,
             morningReports,
-            drivers: driversInApp
+            drivers: driversInApp,
+            inventory
           }
         })
       });
@@ -388,6 +433,121 @@ export function useNoaBrain() {
     // --- Core Rule-Based Local Fallback Engine (Forces Clean, Structured Interactive HTML Components in All Cases) ---
     const inputClean = userInput.trim().toLowerCase();
     const mentionedCustomers = customers.filter(c => c.name && inputClean.includes(c.name.toLowerCase()));
+
+    // 0. Inventory & SKU lookup handler
+    if (
+      inputClean.includes('מלאי') || 
+      inputClean.includes('סחורה') || 
+      inputClean.includes('מוצר') || 
+      inputClean.includes('פריט') || 
+      inputClean.includes('sku') || 
+      /\d{4,}/.test(inputClean)
+    ) {
+      // Extract SKU logic from text: e.g. "SKU-100191" or "100191" or "sku 100191"
+      const skuMatch = userInput.match(/sku[-_ ]?([a-zA-Z0-9]+)/i) || userInput.match(/(?:sku)?[-_ ]?(\d{4,})/i);
+      const skuQuery = skuMatch ? skuMatch[1] : '';
+
+      let matchedItems = inventory;
+      if (skuQuery) {
+        matchedItems = inventory.filter(item => 
+          item.sku.toLowerCase().includes(skuQuery.toLowerCase()) ||
+          skuQuery.toLowerCase().includes(item.sku.toLowerCase())
+        );
+      } else {
+        // Look for specific material names of items mentioned in our query
+        const searchTerms = inputClean.split(' ').filter(word => word.length > 2 && !['מלאי', 'הציגי', 'תציגי', 'כמה', 'יש', 'מצב', 'של', 'את'].includes(word));
+        if (searchTerms.length > 0) {
+          matchedItems = inventory.filter(item => 
+            searchTerms.some(term => 
+              (item.name || '').toLowerCase().includes(term) ||
+              (item.sku || '').toLowerCase().includes(term)
+            )
+          );
+        }
+      }
+
+      if (matchedItems.length > 0) {
+        const itemsCardsHtml = matchedItems.map(item => {
+          const isLowStock = item.currentStock < item.minStock;
+          const statusBgClass = isLowStock ? 'bg-rose-50 text-rose-700 border border-rose-100' : 'bg-emerald-50 text-emerald-800 border border-emerald-100';
+          const statusLabel = isLowStock ? '🔴 חוסר במלאי / מתחת למינימום' : '🟢 מלאי תקין ומאושר';
+          const statusProgressPercent = Math.min(100, Math.max(0, (item.currentStock / (item.minStock || 1)) * 50));
+          
+          return `
+<div class="bg-white rounded-xl p-4 border border-[#E2E8F0] mb-3 hover:shadow-xs transition-all relative overflow-hidden text-right" dir="rtl">
+  <div class="absolute top-0 right-0 left-0 h-1 ${isLowStock ? 'bg-rose-500' : 'bg-emerald-500'}"></div>
+  <div class="flex items-start gap-4 mt-1">
+    ${item.imageUrl ? `
+      <img src="${item.imageUrl}" alt="${item.name}" referrerpolicy="no-referrer" class="w-16 h-16 rounded-lg object-cover border border-gray-150 shrink-0" />
+    ` : `
+      <div class="w-16 h-16 rounded-lg bg-slate-100 border border-gray-150 flex items-center justify-center shrink-0">
+        <span class="text-2xl">📦</span>
+      </div>
+    `}
+    <div class="flex-1 min-w-0 font-sans">
+      <div class="flex items-center justify-between mb-1">
+        <span class="text-[10px] font-bold font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded">SKU-${item.sku}</span>
+        <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full ${statusBgClass}">
+          ${item.currentStock} ${item.unit}
+        </span>
+      </div>
+      <h4 class="font-bold text-sm text-slate-800 leading-snug">${item.name}</h4>
+      ${item.description ? `<p class="text-[11px] text-slate-500 mt-1.5 leading-relaxed">${item.description}</p>` : ''}
+      
+      <div class="grid grid-cols-2 gap-x-4 gap-y-1.5 mt-3 pt-3 border-t border-dashed border-[#E2E8F0] text-[11px] text-slate-600">
+        <div><b>📦 כמות נוכחית:</b> ${item.currentStock} ${item.unit}</div>
+        <div><b>📉 סף מינימום:</b> ${item.minStock} ${item.unit}</div>
+        ${item.price ? `<div><b>💰 מחיר מחירון:</b> ₪${item.price}</div>` : ''}
+        ${item.category ? `<div><b>🏷️ קטגוריה:</b> ${item.category}</div>` : ''}
+      </div>
+
+      <div class="mt-3.5 flex items-center gap-2 select-none">
+        <div class="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+          <div class="h-full rounded-full ${isLowStock ? 'bg-rose-500' : 'bg-emerald-500'}" style="width: ${statusProgressPercent}%"></div>
+        </div>
+        <span class="text-[10px] font-bold text-slate-500 shrink-0">${statusLabel}</span>
+      </div>
+    </div>
+  </div>
+</div>
+          `;
+        }).join('\n');
+
+        return `
+<div class="bg-[#F8FAFC] border border-[#E2E8F0] shadow-sm text-[#1E293B] font-sans p-5 rounded-2xl text-right my-2" dir="rtl">
+  <div class="flex items-center justify-between border-b border-[#E2E8F0] pb-2.5 mb-4 select-none">
+    <div class="flex items-center gap-2">
+      <span class="text-xl">📦</span>
+      <span class="text-sm font-bold text-slate-800">כרטיס מוצר ומצב מלאי - ח. סבן חומרי בניין</span>
+    </div>
+    <span class="text-[10px] font-bold px-2 py-0.5 bg-blue-50 text-[#3B82F6] rounded-full">סנכרון Firestore</span>
+  </div>
+  
+  <div class="space-y-1">
+    ${itemsCardsHtml}
+  </div>
+  
+  <div class="text-[10px] text-slate-400 mt-2.5 border-t border-dashed border-[#E2E8F0] pt-2 text-center select-none font-sans leading-relaxed">
+    המפקד ראמי, נתוני המלאי מסונכרנים בזמן אמת. באדיבות נועה ❤️
+  </div>
+</div>`.trim();
+      }
+
+      const inputSearchDisplay = skuQuery ? `SKU-${skuQuery}` : userInput;
+      return `
+<div class="bg-[#F8FAFC] border border-[#E2E8F0] shadow-sm text-[#1E293B] font-sans p-5 rounded-2xl text-right my-2" dir="rtl">
+  <div class="flex items-center gap-2 text-rose-600 mb-3 font-semibold text-sm select-none">
+    <span>⚠️</span>
+    <span>פריט לא נמצא במלאי במחסן</span>
+  </div>
+  <p class="text-xs leading-relaxed text-slate-600 font-medium">
+    המפקד ראמי, סרקתי את קולקציית inventory ב-Firestore עבור <b>"${inputSearchDisplay}"</b> ואין מזהה תואם במחסני ח. סבן.
+  </p>
+  <div class="text-[10px] text-slate-400 mt-3 border-t border-dashed border-[#E2E8F0] pt-2 text-center select-none">
+    המפקד, אני איתך בכל שלב. באדיבות נועה ❤️
+  </div>
+</div>`.trim();
+    }
 
     // 1. Google Drive Documents Handling
     if (inputClean.includes('מסמך') || inputClean.includes('קובץ') || inputClean.includes('תיקייה') || inputClean.includes('תעלי') || inputClean.includes('שמרי')) {
@@ -592,7 +752,9 @@ export function useNoaBrain() {
       ${o.items}
     </div>
   </div>
-  <div class="mt-4 flex flex-wrap gap-2 justify-start border-t border-[#E2E8F0] pt-3 animate-fade-in" dir="rtl">
+  <div class="mt-4 flex flex-wrap gap-1.5 justify-start border-t border-[#E2E8F0] pt-3 animate-fade-in" dir="rtl">
+    <button onclick="window.dispatchEvent(new CustomEvent('noa-action', {detail: {action: 'open-driver-select', orderId: '${o.id}'}}))" class="px-2.5 py-1 text-[11px] font-bold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-lg border border-indigo-100 cursor-pointer transition-all">שבץ נהג 👤</button>
+    <button onclick="window.dispatchEvent(new CustomEvent('noa-action', {detail: {action: 'open-status-select', orderId: '${o.id}'}}))" class="px-2.5 py-1 text-[11px] font-bold bg-amber-50 text-amber-700 hover:bg-amber-100 rounded-lg border border-amber-100 cursor-pointer transition-all">עדכן סטטוס 🔄</button>
     <button onclick="window.dispatchEvent(new CustomEvent('noa-action', {detail: {action: 'update-order', orderId: '${o.id}', field: 'status', value: 'preparing'}}))" class="px-2.5 py-1 text-[11px] font-bold bg-blue-50 text-[#3B82F6] hover:bg-blue-100 rounded-lg border-0 cursor-pointer transition-all">בהכנה 🛠️</button>
     <button onclick="window.dispatchEvent(new CustomEvent('noa-action', {detail: {action: 'update-order', orderId: '${o.id}', field: 'status', value: 'ready'}}))" class="px-2.5 py-1 text-[11px] font-bold bg-purple-50 text-purple-700 hover:bg-purple-100 rounded-lg border-0 cursor-pointer transition-all">מוכן לעליה 📦</button>
     <button onclick="window.dispatchEvent(new CustomEvent('noa-action', {detail: {action: 'update-order', orderId: '${o.id}', field: 'status', value: 'on_the_way'}}))" class="px-2.5 py-1 text-[11px] font-bold bg-cyan-50 text-cyan-700 hover:bg-cyan-100 rounded-lg border-0 cursor-pointer transition-all">בדרך 🚚</button>
@@ -784,6 +946,7 @@ export function useNoaBrain() {
     orders,
     morningReports,
     customers,
+    inventory,
     loading,
     getNoaAnalysis
   };

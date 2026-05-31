@@ -78,7 +78,7 @@ function MetricCard({
   const getStylesForLabel = (lbl: string) => {
     const styleMap: Record<string, React.CSSProperties & { fontFamily?: string }> = {
       "כל ההזמנות": { marginLeft: "auto" },
-      "פעילות בשטח": { marginLeft: "auto" },
+      " הזמנות היום": { marginLeft: "auto" },
       "בהכנה": { marginLeft: "auto" },
       "מוכן": {
         marginLeft: "auto",
@@ -253,10 +253,8 @@ function OrderCard({
 export default function OrdersBoardTab() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([
-    { id: 'hezi', name: 'חזי (סיירת)', phone: '054-1111111' },
-    { id: 'sami', name: 'סאמי (מובילים כבדים)', phone: '054-2222222' },
-    { id: 'avi', name: 'אבי (מחסן ותובלה)', phone: '054-3333333' },
-    { id: 'shimon', name: 'שמעון (ג׳וני הובלות)', phone: '054-4444444' }
+    { id: 'hikmat', name: 'חכמת (מנוף 10 מטר )', phone: '053-2316985'},
+    { id: 'ali', name: 'עלי (משאית פריקה ידנית )', phone: '054-2276631'},
   ]);
   const [activeFilter, setActiveFilter] = useState<string>("active");
   const [searchTerm, setSearchTerm] = useState<string>("");

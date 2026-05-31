@@ -34,8 +34,28 @@ export interface FirestoreErrorInfo {
 // מניעת שגיאות אתחול כפול בטעינה חמה
 export const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
-const DB_ID = "ai-studio-cc5d2687-b402-4b97-b808-5ba700689e0e";
-export const db = getFirestore(app, DB_ID);
+// שליפת מזהה מסד הנתונים מתוך הגדרות המערכת, או שימוש במזהה הקיים כגיבוי, עם מנגנון מניעת קריסה
+let dbInstance;
+try {
+  const configDatabaseId = (firebaseConfig as any).firestoreDatabaseId || (firebaseConfig as any).databaseId;
+  const targetDbId = configDatabaseId || "ai-studio-cc5d2687-b402-4b97-b808-5ba700689e0e";
+  
+  if (targetDbId) {
+    try {
+      dbInstance = getFirestore(app, targetDbId);
+    } catch (innerErr) {
+      console.warn("Could not initialize with custom database ID, falling back to default database:", innerErr);
+      dbInstance = getFirestore(app);
+    }
+  } else {
+    dbInstance = getFirestore(app);
+  }
+} catch (e) {
+  console.error("Critical Firestore initialization failure:", e);
+  dbInstance = getFirestore(app);
+}
+
+export const db = dbInstance;
 export const rtdb = getDatabase(app);
 export const auth = getAuth(app);
 export const storage = getStorage(app);

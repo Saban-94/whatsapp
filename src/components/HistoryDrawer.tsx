@@ -93,10 +93,7 @@ export default function HistoryDrawer({ onClose, dir, onOpenNoaChat }: HistoryDr
     });
     // Clean driver naming
     if (topDriver === 'hikmat') return 'חכמת (מנוף 10 מטר )';
-    if (topDriver === 'hassan') return 'חסן (רביב)';
-    if (topDriver === 'rami') return 'רמי (פולטריילר)';
-    if (topDriver === 'muni') return 'מוני (משאית מנוף)';
-    if (topDriver === 'subhi') return 'סובחי (טרילר חול)';
+    if (topDriver === 'ali') return 'עלי (משאית פריקה ידנית)';
     return topDriver;
   };
 
@@ -189,10 +186,7 @@ export default function HistoryDrawer({ onClose, dir, onOpenNoaChat }: HistoryDr
               // Extract clean driver name 
               const getCleanDriverName = (driverId: string) => {
                 if (driverId === 'hikmat') return 'חכמת (מנוף 10 מטר )';
-                if (driverId === 'hassan') return 'חסן (רביב)';
-                if (driverId === 'rami') return 'רמי (פולטריילר)';
-                if (driverId === 'muni') return 'מוני (משאית מנוף)';
-                if (driverId === 'subhi') return 'סובחי (טרילר חול)';
+                if (driverId === 'ali') return 'עלי (משאית פריקה ידנית)';
                 return driverId || 'טרם שוייך נהג';
               };
 

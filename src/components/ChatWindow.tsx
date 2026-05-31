@@ -81,7 +81,36 @@ export default function ChatWindow({
     }
   }, [prefilledText, onClearPrefilledText]);
 
-  const { getNoaAnalysis, suggestions } = useNoaBrain();
+  const { getNoaAnalysis, suggestions, orders } = useNoaBrain();
+
+  const activeContactId = chat?.id;
+
+  const openOrdersCount = React.useMemo(() => {
+    if (!orders || !activeContactId) return 0;
+    return orders.filter(o => {
+      // open orders (where status is NOT 'delivered' and NOT 'cancelled')
+      if (o.status === 'delivered' || o.status === 'cancelled') return false;
+
+      // Match by driverId, customer phone, customer name, or direct ID match
+      const isDriverMatch = o.driverId === activeContactId;
+      
+      const cleanOrderPhone = o.customerPhone ? o.customerPhone.replace(/[\s-]/g, '') : '';
+      const cleanChatPhone = chat?.phoneNumber ? chat.phoneNumber.replace(/[\s-]/g, '') : '';
+      const isPhoneMatch = cleanChatPhone && cleanOrderPhone && (cleanOrderPhone.endsWith(cleanChatPhone) || cleanChatPhone.endsWith(cleanOrderPhone));
+      
+      const isNameMatch = chat?.name && o.customerName === chat.name;
+      const isIdMatch = o.id === activeContactId;
+
+      return isDriverMatch || isPhoneMatch || isNameMatch || isIdMatch;
+    }).length;
+  }, [orders, activeContactId]);
+
+  const badgeClass = React.useMemo(() => {
+    if (openOrdersCount === 0) return 'bg-slate-100 text-slate-500 border border-slate-200';
+    if (openOrdersCount <= 3) return 'bg-blue-50 text-blue-600 border border-blue-150';
+    return 'bg-amber-50 text-amber-700 border border-amber-200 font-extrabold animate-pulse';
+  }, [openOrdersCount]);
+
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [showDetailsPanel, setShowDetailsPanel] = useState(false);
@@ -610,7 +639,15 @@ export default function ChatWindow({
             >
               <img src={chat.avatar || undefined} alt={chat.name} className="w-10 h-10 rounded-full object-cover shadow-sm" />
               <div className="text-right">
-                <span className="font-semibold text-[15px] text-gray-900 block leading-tight">{chat.name}</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-[15px] text-gray-900 leading-tight">{chat.name}</span>
+                  <span 
+                    className={`text-[11px] font-bold px-2 py-0.5 rounded-md whitespace-nowrap border transition-all ${badgeClass}`}
+                    title={`${openOrdersCount} הזמנות פתוחות בטיפול בלייב`}
+                  >
+                    {openOrdersCount}
+                  </span>
+                </div>
                 <div className="h-4 overflow-hidden relative mt-0.5 min-w-[120px]">
                   <AnimatePresence mode="wait" initial={false}>
                     <motion.span

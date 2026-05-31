@@ -81,7 +81,7 @@ export default function ChatWindow({
     }
   }, [prefilledText, onClearPrefilledText]);
 
-  const { getNoaAnalysis } = useNoaBrain();
+  const { getNoaAnalysis, suggestions } = useNoaBrain();
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [showDetailsPanel, setShowDetailsPanel] = useState(false);
@@ -517,12 +517,19 @@ export default function ChatWindow({
 
   // שדרוג 1: פונקציית שליחה מותאמת לפרוטוקול JONI
 
-  const handleSend = () => {
-    if (!inputText.trim()) return;
+  const handleSend = (textOverride?: string | React.MouseEvent) => {
+    const textToSend = typeof textOverride === 'string' ? textOverride : inputText;
+    if (!textToSend.trim()) return;
     
-    onSendMessage(chat.id, inputText.trim(), 'text');
-    setInputText('');
+    onSendMessage(chat.id, textToSend.trim(), 'text');
+    if (typeof textOverride !== 'string') {
+      setInputText('');
+    }
     setShowEmojiPicker(false);
+  };
+
+  const handleSuggestionClick = (suggestion: string) => {
+    handleSend(suggestion);
   };
 
   // שדרוג 2: שילוב מנוע "נועה" לשדרוג טקסט
@@ -749,91 +756,108 @@ export default function ChatWindow({
         )}
 
         {/* Input Area */}
-        <div className="bg-white/80 backdrop-blur-md px-4 py-3 flex items-center gap-3 z-10 relative border-t border-gray-200">
+        <div className="bg-white/80 backdrop-blur-md px-4 py-3 flex flex-col gap-2.5 z-10 relative border-t border-gray-200">
           
-          {/* Hidden inputs for real file uploads */}
-          <input
-            type="file"
-            ref={imageInputRef}
-            onChange={(e) => handleFileUpload(e, 'image')}
-            accept="image/*"
-            style={{ display: 'none' }}
-          />
-          <input
-            type="file"
-            ref={docInputRef}
-            onChange={(e) => handleFileUpload(e, 'doc')}
-            accept=".pdf,.doc,.docx,.xls,.xlsx,.txt"
-            style={{ display: 'none' }}
-          />
-
-          {isUploading && (
-            <div className="absolute inset-0 bg-white/95 backdrop-blur-xs flex items-center justify-center gap-3 z-20 transition-all">
-              <Loader2 className="w-5 h-5 text-[#007AFF] animate-spin" />
-              <span className="text-sm text-gray-700 font-medium">מעלה קובץ מאובטח ל-Drive של ח. סבן...</span>
+          {/* Quick-Reply Suggestion Chips Area */}
+          {suggestions && suggestions.length > 0 && (
+            <div className="flex items-center gap-2 overflow-x-auto py-1 select-none w-full border-b border-gray-100/60 pb-2 flex-nowrap" dir="rtl" style={{ scrollbarWidth: 'none' }}>
+              {suggestions.map((suggestion, index) => (
+                <button
+                  key={index}
+                  onClick={() => handleSuggestionClick(suggestion)}
+                  className="bg-slate-100 text-slate-750 font-medium border border-slate-200/60 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition-all cursor-pointer rounded-full px-3 py-1.5 text-xs whitespace-nowrap shrink-0 font-sans"
+                >
+                  {suggestion}
+                </button>
+              ))}
             </div>
           )}
-          
-          {/* Noa AI Button */}
-          <button 
-            onClick={handleAskNoa}
-            disabled={!inputText.trim() || isNoaProcessing}
-            className={`p-2 rounded-full transition-all ${inputText.trim() ? 'bg-purple-100 text-purple-600 hover:bg-purple-200' : 'bg-gray-100 text-gray-400'}`}
-            title="בקש מנועה לנסח"
-          >
-            <Sparkles className={`w-5 h-5 ${isNoaProcessing ? 'animate-pulse' : ''}`} />
-          </button>
 
-          <div className="flex items-center gap-2 text-gray-500">
-            <button onClick={() => { setShowAttachMenu(!showAttachMenu); setShowEmojiPicker(false); }} className="p-2 hover:bg-gray-100 rounded-full transition-colors relative" title="צרף קובץ">
-              <Paperclip className="w-5.5 h-5.5" />
-              {showAttachMenu && (
-                <div className="absolute bottom-14 right-0 flex flex-col gap-3 bg-white p-3 rounded-2xl shadow-xl border border-gray-100 z-30">
-                  <div onClick={() => { startCamera('environment'); setShowAttachMenu(false); }} className="w-12 h-12 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center hover:scale-105 transition-transform cursor-pointer" title="צילום מצלמה שטח"><Camera className="w-5 h-5" /></div>
-                  <div onClick={() => handleSendMedia('image')} className="w-12 h-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center hover:scale-105 transition-transform cursor-pointer" title="גלריית תמונות"><Image className="w-5 h-5" /></div>
-                  <div onClick={() => handleSendMedia('voice')} className="w-12 h-12 rounded-full bg-green-100 text-green-600 flex items-center justify-center hover:scale-105 transition-transform cursor-pointer" title="הודעה קולית"><Mic className="w-5 h-5" /></div>
-                  <div onClick={() => handleSendMedia('document')} className="w-12 h-12 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center hover:scale-105 transition-transform cursor-pointer" title="מסמך"><File className="w-5 h-5" /></div>
-                </div>
-              )}
-            </button>
-            <button onClick={() => startCamera('environment')} className="p-2 hover:bg-gray-100 text-gray-500 hover:text-amber-500 rounded-full transition-all cursor-pointer" title="צילום תמונה מהמצלמה">
-              <Camera className="w-5.5 h-5.5" />
-            </button>
-          </div>
-
-          <div className="flex-1 relative">
-             <button onClick={() => { setShowEmojiPicker(!showEmojiPicker); setShowAttachMenu(false); }} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                <Smile className="w-5.5 h-5.5" />
-             </button>
+          <div className="flex items-center gap-3 w-full">
+            {/* Hidden inputs for real file uploads */}
             <input
-              type="text"
-              placeholder="הודעה חדשה..."
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              onKeyDown={handleKeyPress}
-              className="w-full bg-[#f2f2f7] rounded-full py-2.5 pl-4 pr-11 outline-none text-[15px] text-gray-900 focus:bg-white focus:ring-2 focus:ring-[#007AFF]/20 transition-all"
+              type="file"
+              ref={imageInputRef}
+              onChange={(e) => handleFileUpload(e, 'image')}
+              accept="image/*"
+              style={{ display: 'none' }}
             />
-            {showEmojiPicker && (
-              <div className="absolute bottom-14 right-0 bg-white rounded-2xl shadow-xl p-4 border border-gray-100 w-72">
-                <div className="grid grid-cols-6 gap-2 text-2xl">
-                  {emojis.map((em, i) => (
-                    <button key={i} onClick={() => setInputText(p => p + em)} className="hover:scale-125 transition-transform">{em}</button>
-                  ))}
-                </div>
+            <input
+              type="file"
+              ref={docInputRef}
+              onChange={(e) => handleFileUpload(e, 'doc')}
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.txt"
+              style={{ display: 'none' }}
+            />
+
+            {isUploading && (
+              <div className="absolute inset-0 bg-white/95 backdrop-blur-xs flex items-center justify-center gap-3 z-20 transition-all">
+                <Loader2 className="w-5 h-5 text-[#007AFF] animate-spin" />
+                <span className="text-sm text-gray-700 font-medium">מעלה קובץ מאובטח ל-Drive של ח. סבן...</span>
               </div>
             )}
-          </div>
+            
+            {/* Noa AI Button */}
+            <button 
+              onClick={handleAskNoa}
+              disabled={!inputText.trim() || isNoaProcessing}
+              className={`p-2 rounded-full transition-all ${inputText.trim() ? 'bg-purple-100 text-purple-600 hover:bg-purple-200' : 'bg-gray-100 text-gray-400'}`}
+              title="בקש מנועה לנסח"
+            >
+              <Sparkles className={`w-5 h-5 ${isNoaProcessing ? 'animate-pulse' : ''}`} />
+            </button>
 
-          <div>
-            {inputText.trim() ? (
-              <button onClick={handleSend} className="w-10 h-10 rounded-full bg-[#007AFF] text-white flex items-center justify-center hover:bg-blue-600 transition-colors shadow-sm">
-                <Send className="w-5 h-5 transform rotate-180 -ml-1" />
+            <div className="flex items-center gap-2 text-gray-500">
+              <button onClick={() => { setShowAttachMenu(!showAttachMenu); setShowEmojiPicker(false); }} className="p-2 hover:bg-gray-100 rounded-full transition-colors relative" title="צרף קובץ">
+                <Paperclip className="w-5.5 h-5.5" />
+                {showAttachMenu && (
+                  <div className="absolute bottom-14 right-0 flex flex-col gap-3 bg-white p-3 rounded-2xl shadow-xl border border-gray-100 z-30">
+                    <div onClick={() => { startCamera('environment'); setShowAttachMenu(false); }} className="w-12 h-12 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center hover:scale-105 transition-transform cursor-pointer" title="צילום מצלמה שטח"><Camera className="w-5 h-5" /></div>
+                    <div onClick={() => handleSendMedia('image')} className="w-12 h-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center hover:scale-105 transition-transform cursor-pointer" title="גלריית תמונות"><Image className="w-5 h-5" /></div>
+                    <div onClick={() => handleSendMedia('voice')} className="w-12 h-12 rounded-full bg-green-100 text-green-600 flex items-center justify-center hover:scale-105 transition-transform cursor-pointer" title="הודעה קולית"><Mic className="w-5 h-5" /></div>
+                    <div onClick={() => handleSendMedia('document')} className="w-12 h-12 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center hover:scale-105 transition-transform cursor-pointer" title="מסמך"><File className="w-5 h-5" /></div>
+                  </div>
+                )}
               </button>
-            ) : (
-              <button className="w-10 h-10 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center hover:bg-gray-200 transition-colors">
-                <Mic className="w-5 h-5" />
+              <button onClick={() => startCamera('environment')} className="p-2 hover:bg-gray-100 text-gray-500 hover:text-amber-500 rounded-full transition-all cursor-pointer" title="צילום תמונה מהמצלמה">
+                <Camera className="w-5.5 h-5.5" />
               </button>
-            )}
+            </div>
+
+            <div className="flex-1 relative">
+               <button onClick={() => { setShowEmojiPicker(!showEmojiPicker); setShowAttachMenu(false); }} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                  <Smile className="w-5.5 h-5.5" />
+               </button>
+              <input
+                type="text"
+                placeholder="הודעה חדשה..."
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                onKeyDown={handleKeyPress}
+                className="w-full bg-[#f2f2f7] rounded-full py-2.5 pl-4 pr-11 outline-none text-[15px] text-gray-900 focus:bg-white focus:ring-2 focus:ring-[#007AFF]/20 transition-all"
+              />
+              {showEmojiPicker && (
+                <div className="absolute bottom-14 right-0 bg-white rounded-2xl shadow-xl p-4 border border-gray-100 w-72">
+                  <div className="grid grid-cols-6 gap-2 text-2xl">
+                    {emojis.map((em, i) => (
+                      <button key={i} onClick={() => setInputText(p => p + em)} className="hover:scale-125 transition-transform">{em}</button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div>
+              {inputText.trim() ? (
+                <button onClick={handleSend} className="w-10 h-10 rounded-full bg-[#007AFF] text-white flex items-center justify-center hover:bg-blue-600 transition-colors shadow-sm">
+                  <Send className="w-5 h-5 transform rotate-180 -ml-1" />
+                </button>
+              ) : (
+                <button className="w-10 h-10 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center hover:bg-gray-200 transition-colors">
+                  <Mic className="w-5 h-5" />
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>

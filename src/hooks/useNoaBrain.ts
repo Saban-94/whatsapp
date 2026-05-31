@@ -98,6 +98,11 @@ export function useNoaBrain() {
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [suggestions, setSuggestions] = useState<string[]>([
+    "הציגי הזמנות של היום 🏗️",
+    "סטטוס נהגי סידור🚚",
+    "מה מצב המלאי? 📦"
+  ]);
 
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, 'inventory'), (snapshot) => {
@@ -271,6 +276,14 @@ export function useNoaBrain() {
 
   const getNoaAnalysis = async (userInput: string): Promise<string> => {
     const inputClean = userInput.trim().toLowerCase();
+
+    if (inputClean.includes('מלאי') || inputClean.includes('100191')) {
+      setSuggestions(["הציגי את כל המלאי", "עדכון ידני למק\"ט", "חזרה להזמנות"]);
+    } else if (inputClean.includes('הזמנות')) {
+      setSuggestions(["הזמנות של היום", "הציגי את הנהגים", "דוח בוקר תפעולי"]);
+    } else {
+      setSuggestions(["הציגי הזמנות של היום 🏗️", "סטטוס נהגי סידור🚚", "מה מצב המלאי? 📦"]);
+    }
 
     // 1. שינוי פעילות לנהג חזי
     if (inputClean.includes('חזי') && (inputClean.includes('שנה') || inputClean.includes('פעילות') || inputClean.includes('סטטוס'))) {
@@ -489,5 +502,5 @@ export function useNoaBrain() {
 </div>`.trim();
   };
 
-  return { orders, morningReports, customers, drivers, inventory, loading, getNoaAnalysis };
+  return { orders, morningReports, customers, drivers, inventory, loading, getNoaAnalysis, suggestions, setSuggestions };
 }

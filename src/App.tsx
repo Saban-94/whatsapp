@@ -6,6 +6,7 @@ import ChatWindow from './components/ChatWindow';
 import StatusViewer from './components/StatusViewer';
 import { ProfileDrawer, NewChatDrawer, SettingsDrawer } from './components/Drawers';
 import TasksDrawer from './components/TasksDrawer';
+import HistoryDrawer from './components/HistoryDrawer';
 import { motion, AnimatePresence } from 'motion/react';
 import AdminPanel from './components/AdminPanel';
 import { sendJoniMessage, db } from './lib/firebase';
@@ -173,7 +174,7 @@ export default function App() {
   }, [chats]);
   
   // Drawer slider control
-  const [activeDrawer, setActiveDrawer] = useState<'profile' | 'newChat' | 'settings' | 'tasks' | null>(null);
+  const [activeDrawer, setActiveDrawer] = useState<'profile' | 'newChat' | 'settings' | 'tasks' | 'history' | null>(null);
 
   // Wallpaper options: classic, green, blue, dark, white
   const [wallpaperTheme, setWallpaperTheme] = useState<'classic' | 'green' | 'blue' | 'dark' | 'white'>(() => {
@@ -711,6 +712,22 @@ export default function App() {
                     />
                   </motion.div>
                 )}
+
+                {activeDrawer === 'history' && (
+                  <motion.div 
+                    initial={{ x: sidebarPosition === 'right' ? 380 : -380 }} 
+                    animate={{ x: 0 }} 
+                    exit={{ x: sidebarPosition === 'right' ? 380 : -380 }} 
+                    transition={{ type: 'tween', duration: 0.22 }} 
+                    className="absolute inset-0 z-20"
+                  >
+                    <HistoryDrawer 
+                      onClose={() => setActiveDrawer(null)}
+                      dir="rtl"
+                      onOpenNoaChat={handleOpenNoaChat}
+                    />
+                  </motion.div>
+                )}
               </AnimatePresence>
 
               {/* Sidebar View */}
@@ -729,6 +746,7 @@ export default function App() {
                 onOpenNewChat={() => setActiveDrawer('newChat')}
                 onOpenSettings={() => setActiveDrawer('settings')}
                 onOpenTasks={() => setActiveDrawer('tasks')}
+                onOpenHistory={() => setActiveDrawer('history')}
                 onMarkAllAsRead={handleMarkAllAsRead}
                 searchTerm={sidebarSearchTerm}
                 onSearchChange={setSidebarSearchTerm}

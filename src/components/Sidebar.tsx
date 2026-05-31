@@ -16,7 +16,8 @@ import {
   PlusSquare,
   Lock,
   ListTodo,
-  LayoutDashboard
+  LayoutDashboard,
+  History
 } from 'lucide-react';
 import { Chat, UserProfile, StatusStory } from '../types';
 
@@ -31,6 +32,7 @@ interface SidebarProps {
   onOpenNewChat: () => void;
   onOpenSettings: () => void;
   onOpenTasks: () => void;
+  onOpenHistory: () => void;
   onMarkAllAsRead: () => void;
   searchTerm: string;
   onSearchChange: (val: string) => void;
@@ -51,6 +53,7 @@ export default function Sidebar({
   onOpenNewChat,
   onOpenSettings,
   onOpenTasks,
+  onOpenHistory,
   onMarkAllAsRead,
   searchTerm,
   onSearchChange,
@@ -186,6 +189,16 @@ export default function Sidebar({
             <LayoutDashboard className="w-5.5 h-5.5" />
           </button>
 
+          {/* Completed Orders History Trigger */}
+          <button 
+            onClick={onOpenHistory}
+            className="hover:bg-[#d9dbd9]/60 p-2 rounded-full cursor-pointer transition-colors bg-transparent border-0 text-emerald-600 hover:text-emerald-700"
+            title="היסטוריית הזמנות שסופקו"
+            id="sidebar-history-btn"
+          >
+            <History className="w-5.5 h-5.5" />
+          </button>
+
           {/* Tasks Trigger */}
           <button 
             onClick={onOpenTasks}
@@ -238,6 +251,13 @@ export default function Sidebar({
                   >
                     <LayoutDashboard className="w-4 h-4 text-[#00a884]" />
                     <span>{viewMode === 'chat' ? 'סידור עבודה חי 🏗️' : 'שיחות מסנג׳ר 💬'}</span>
+                  </button>
+                  <button 
+                    onClick={() => { onOpenHistory(); setShowDropdown(false); }}
+                    className="w-full text-right px-4 py-2.5 hover:bg-gray-50 flex items-center gap-3 text-emerald-700 font-semibold bg-transparent border-b border-gray-100 cursor-pointer"
+                  >
+                    <History className="w-4 h-4 text-[#00a884]" />
+                    <span>היסטוריית הזמנות שסופקו 📜</span>
                   </button>
                   <button 
                     onClick={() => { onOpenNewChat(); setShowDropdown(false); }}

@@ -71,7 +71,7 @@ const NOA_SYSTEM_PROMPT = `
 # Agent Instructions - SabanOS (Noa)
 ## Personality & Tone - "Noa" (נועה)
 - Identity: Personal Assistant & Operations Manager at "H. Saban Construction Materials".
-- Loyalty: Serving ONLY Rami (ראמי). Address him as "אהובי" or "Partner".
+- Loyalty: Serving ONLY Rami (ראמי). Address him as "המפקד" or "Partner".
 - Tone: Professional, high-density, concise Hebrew. Elite management consulting style.
 - Mandatory Signature: Every message must end with "באדיבות נועה ❤️".
 - Response Limit: Maximum 50 words per response (excluding HTML components).
@@ -229,7 +229,7 @@ export function useNoaBrain() {
       return `
 <div class="bg-white border border-[#E2E8F0] shadow-sm p-5 rounded-2xl text-right font-sans" dir="rtl">
   <div class="font-bold text-slate-800 text-sm border-b border-slate-100 pb-2 mb-3">✅ עדכון סטטוס פעילות נהג</div>
-  <p class="text-xs text-slate-600 mb-3">אהובי ראמי, הסטטוס של <b>${matchedDriver.name}</b> עודכן בהצלחה.</p>
+  <p class="text-xs text-slate-600 mb-3">המפקד ראמי, הסטטוס של <b>${matchedDriver.name}</b> עודכן בהצלחה.</p>
   <div class="bg-slate-50 p-2 rounded-xl text-xs font-bold ${newStatus === 'active' ? 'text-emerald-600' : 'text-rose-600'}">${newStatus === 'active' ? '🟢 פעיל בשטח' : '🛑 לא פעיל / חופש'}</div>
   <div class="text-[10px] text-slate-400 mt-3 text-center border-t border-dashed border-[#E2E8F0] pt-2">באדיבות נועה ❤️</div>
 </div>`.trim();
@@ -343,7 +343,7 @@ export function useNoaBrain() {
         const titleText = inputClean.includes('היום') ? 'הזמנות מתוזמנות להיום' : 'דוח תנועת הזמנות כללי';
         return `
 <div class="font-sans text-right" dir="rtl">
-  <div class="font-bold text-sm text-slate-800 mb-2 flex items-center gap-1.5 select-none"><span>🏗️</span> אהובי ראמי, להלן ${titleText}:</div>
+  <div class="font-bold text-sm text-slate-800 mb-2 flex items-center gap-1.5 select-none"><span>🏗️</span> המפקד ראמי, להלן ${titleText}:</div>
   ${activeOrdsFormat}
   <div class="text-[10px] text-slate-400 mt-2 text-center select-none">מסונכרן בלייב מול Firestore ח. סבן. באדיבות נועה ❤️</div>
 </div>`.trim();
@@ -373,7 +373,7 @@ export function useNoaBrain() {
 
     return `
 <div class="bg-[#F8FAFC] border border-[#E2E8F0] p-4 rounded-2xl text-right font-sans text-xs text-slate-700" dir="rtl">
-  אהובי ראמי, המערכת מחוברת ומאובטחת. אני ממתינה להוראות הלוגיסטיות הבאות שלך.<br/><br/>
+  המפקד ראמי, המערכת מחוברת ומאובטחת. אני ממתינה להוראות הלוגיסטיות הבאות שלך.<br/><br/>
   <span class="text-blue-500 font-bold">באדיבות נועה ❤️</span>
 </div>`.trim();
   };

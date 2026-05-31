@@ -275,25 +275,23 @@ export function useNoaBrain() {
   };
 
   const getNoaAnalysis = async (userInput: string): Promise<string> => {
-    const inputClean = userInput.trim().toLowerCase();
+    // 1. AUTOMATED STATE CLEANING (The Reset Flush)
+    setSuggestions(["מנתח נתונים... 🧠"]);
 
-    if (inputClean.includes('מלאי') || inputClean.includes('100191')) {
-      setSuggestions(["הציגי את כל המלאי", "עדכון ידני למק\"ט", "חזרה להזמנות"]);
-    } else if (inputClean.includes('הזמנות')) {
-      setSuggestions(["הזמנות של היום", "הציגי את הנהגים", "דוח בוקר תפעולי"]);
-    } else {
-      setSuggestions(["הציגי הזמנות של היום 🏗️", "סטטוס נהגי סידור🚚", "מה מצב המלאי? 📦"]);
-    }
+    const inputClean = userInput.trim().toLowerCase();
 
     // 1. שינוי פעילות לנהג חזי
     if (inputClean.includes('חזי') && (inputClean.includes('שנה') || inputClean.includes('פעילות') || inputClean.includes('סטטוס'))) {
-      return await toggleDriverActivityInFirebase('חזי');
+      const res = await toggleDriverActivityInFirebase('חזי');
+      setSuggestions(["הציגי את כל הנהגים 🚛", "דוח בוקר תפעולי ☀️", "הזמנות פעילות"]);
+      return res;
     }
 
     // 2. בדיקת מק"ט-100191 ומלאי
     if (inputClean.includes('100191') || (inputClean.includes('מקט') && inputClean.includes('100191'))) {
       const item = inventory.find(i => i.sku.includes('100191') || i.id.includes('100191'));
       if (item) {
+        setSuggestions(["הציגי את כל המלאי", "עדכון מלאי ידני 🔄", "חזרה להזמנות"]);
         const isLowStock = item.currentStock < item.minStock;
         const progressPercent = Math.min(100, Math.max(5, Math.round((item.currentStock / (item.minStock * 2 || 100)) * 100)));
         return `
@@ -317,13 +315,14 @@ export function useNoaBrain() {
 
     // 3. הצגת נהגים
     if (inputClean.includes('נהג') || inputClean.includes('נהגים')) {
+      setSuggestions(["הציגי את כל הנהגים 🚛", "דוח בוקר תפעולי ☀️", "הזמנות פעילות"]);
       const driversFormat = drivers.map(d => {
         const statusLabel = d.status === 'active' ? '🟢 פעיל בשטח' : '🛑 לא פעיל / חופש';
         return `
 <div class="bg-white p-3 rounded-xl border border-[#E2E8F0] text-xs font-sans text-right mb-2 shadow-xs transition-shadow hover:shadow-md">
   <div class="font-bold text-slate-800 text-sm mb-1">${d.name}</div>
   <div class="text-slate-500 mb-1">📞 טלפון: ${d.phone || 'לא הוזן'}</div>
-  <div class="font-semibold text-slate-700">סטטוס פריסה: <span class="text-xs">${statusLabel}</span></div>
+  <div class="font-semibold text-slate-705">סטטוס פריסה: <span class="text-xs">${statusLabel}</span></div>
   <div class="mt-2.5 flex gap-1.5 justify-start">
     <button onclick="window.dispatchEvent(new CustomEvent('noa-action', {detail: {action: 'open-driver-select', orderId: '', value: '${d.id}'}}))" class="px-2 py-1 text-[11px] font-bold bg-[#007AFF] text-white hover:bg-blue-600 rounded-lg border-0 cursor-pointer">שבץ לסידור 🚚</button>
     <button onclick="window.dispatchEvent(new CustomEvent('noa-action', {detail: {action: 'open-status-select', orderId: '', value: '${d.id}'}}))" class="px-2 py-1 text-[11px] font-bold bg-amber-50 text-amber-700 hover:bg-amber-100 rounded-lg border border-amber-200 cursor-pointer">עדכן פריסה ⚙️</button>
@@ -341,6 +340,7 @@ export function useNoaBrain() {
 
     // 4. תיקון קריטי: שליפת כל ההזמנות / הזמנות של היום
     if (inputClean.includes('הזמנ') || inputClean.includes('משלוח') || inputClean.includes('אספק')) {
+      setSuggestions(["הזמנות של היום 🏗️", "סטטוס נהגי סיירת 🚚", "איפוס הגעה 🕒"]);
       // נבדוק אם יש סינון של תאריך של היום (2026-05-31)
       let filteredOrders = orders;
       const todayStr = "2026-05-31"; // שימוש בנתון הקיים במערכת לזמן אמת
@@ -422,7 +422,7 @@ export function useNoaBrain() {
           if (btn) btn.click();
         }, 50);
       }
-    " class="px-3 py-2 text-xs font-bold bg-white text-slate-700 hover:bg-slate-50 rounded-xl border border-slate-300 cursor-pointer shadow-xs transition-colors">
+    " class="px-3 py-2 text-xs font-bold bg-white text-slate-705 hover:bg-slate-50 rounded-xl border border-slate-300 cursor-pointer shadow-xs transition-colors">
       🚚 בדקי נהגים בשטח
     </button>
   </div>
@@ -440,6 +440,18 @@ export function useNoaBrain() {
       if (response.ok) {
         const data = await response.json();
         if (data && data.text) {
+          const responseText = data.text.toLowerCase();
+          
+          if (responseText.includes('הזמנ') || responseText.includes('משלוח') || responseText.includes('status') || responseText.includes('order') || inputClean.includes('הזמנ') || inputClean.includes('משלוח')) {
+            setSuggestions(["הזמנות של היום 🏗️", "סטטוס נהגי סיירת 🚚", "איפוס הגעה 🕒"]);
+          } else if (responseText.includes('מלאי') || responseText.includes('sku') || responseText.includes('mkt') || responseText.includes('מקט') || inputClean.includes('מלאי') || inputClean.includes('100191')) {
+            setSuggestions(["הציגי את כל המלאי", "עדכון מלאי ידני 🔄", "חזרה להזמנות"]);
+          } else if (responseText.includes('נהג') || responseText.includes('driver') || inputClean.includes('נהג') || inputClean.includes('חזי') || inputClean.includes('סטטוס')) {
+            setSuggestions(["הציגי את כל הנהגים 🚛", "דוח בוקר תפעולי ☀️", "הזמנות פעילות"]);
+          } else {
+            setSuggestions(["הציגי הזמנות של היום 🏗️", "סטטוס נהגי סיירת 🚚", "מה מצב המלאי? 📦"]);
+          }
+
           if (data.text.trim().startsWith('<div')) {
             return data.text;
           } else {
@@ -457,8 +469,14 @@ export function useNoaBrain() {
           }
         }
       }
-    } catch (err) {}
+      // If error occurs or response not OK, trigger resilience fallback
+      setSuggestions(["הזמנות של היום 🏗️", "סטטוס נהגי סיירת 🚚", "מה מצב המלאי? 📦"]);
+    } catch (err) {
+      // Resilience fallback
+      setSuggestions(["הזמנות של היום 🏗️", "סטטוס נהגי סיירת 🚚", "מה מצב המלאי? 📦"]);
+    }
 
+    setSuggestions(["הזמנות של היום 🏗️", "סטטוס נהגי סיירת 🚚", "מה מצב המלאי? 📦"]);
     return `
 <div class="bg-[#F8FAFC] border border-[#E2E8F0] shadow-sm text-[#1E293B] font-sans p-5 rounded-2xl text-right my-1 relative overflow-hidden" dir="rtl">
   <div class="absolute top-0 right-0 left-0 h-1.5 bg-[#008069]"></div>

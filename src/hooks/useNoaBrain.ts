@@ -302,7 +302,31 @@ export function useNoaBrain() {
       }
     }
 
-    // 3. תיקון קריטי: שליפת כל ההזמנות / הזמנות של היום
+    // 3. הצגת נהגים
+    if (inputClean.includes('נהג') || inputClean.includes('נהגים')) {
+      const driversFormat = drivers.map(d => {
+        const statusLabel = d.status === 'active' ? '🟢 פעיל בשטח' : '🛑 לא פעיל / חופש';
+        return `
+<div class="bg-white p-3 rounded-xl border border-[#E2E8F0] text-xs font-sans text-right mb-2 shadow-xs transition-shadow hover:shadow-md">
+  <div class="font-bold text-slate-800 text-sm mb-1">${d.name}</div>
+  <div class="text-slate-500 mb-1">📞 טלפון: ${d.phone || 'לא הוזן'}</div>
+  <div class="font-semibold text-slate-700">סטטוס פריסה: <span class="text-xs">${statusLabel}</span></div>
+  <div class="mt-2.5 flex gap-1.5 justify-start">
+    <button onclick="window.dispatchEvent(new CustomEvent('noa-action', {detail: {action: 'open-driver-select', orderId: '', value: '${d.id}'}}))" class="px-2 py-1 text-[11px] font-bold bg-[#007AFF] text-white hover:bg-blue-600 rounded-lg border-0 cursor-pointer">שבץ לסידור 🚚</button>
+    <button onclick="window.dispatchEvent(new CustomEvent('noa-action', {detail: {action: 'open-status-select', orderId: '', value: '${d.id}'}}))" class="px-2 py-1 text-[11px] font-bold bg-amber-50 text-amber-700 hover:bg-amber-100 rounded-lg border border-amber-200 cursor-pointer">עדכן פריסה ⚙️</button>
+  </div>
+</div>`;
+      }).join('\n');
+
+      return `
+<div class="font-sans text-right" dir="rtl">
+  <div class="font-bold text-sm text-slate-800 mb-2.5 flex items-center gap-1.5 select-none"><span>🚚</span> המפקד ראמי, להלן סטטוס הנהגים והצוות הלוגיסטי:</div>
+  ${driversFormat}
+  <div class="text-[10px] text-slate-400 mt-2 text-center select-none">מסונכרן בלייב מול Firestore ח. סבן • באדיבות נועה ❤️</div>
+</div>`.trim();
+    }
+
+    // 4. תיקון קריטי: שליפת כל ההזמנות / הזמנות של היום
     if (inputClean.includes('הזמנ') || inputClean.includes('משלוח') || inputClean.includes('אספק')) {
       // נבדוק אם יש סינון של תאריך של היום (2026-05-31)
       let filteredOrders = orders;
@@ -349,12 +373,47 @@ export function useNoaBrain() {
 </div>`.trim();
       }
 
-      // חוק חוסר המידע (הודעה מספר 5)
+      // חוק חוסר המידע (הודעה מספר 5) מעוצב באדום רך עם כפתורי טאילווינד
       return `
-<div class="bg-[#F8FAFC] border border-[#E2E8F0] shadow-sm font-sans p-5 rounded-2xl text-right my-1" dir="rtl">
-  <div class="text-rose-600 font-bold text-xs mb-2 select-none">⚠️ חוסר מידע במערכת</div>
-  <p class="text-xs text-slate-700 font-medium">## אהובי ראמי לא הגיע לנקודה זו עדיין... מסכן שלי כמה הוא יכול להספיק!! רחמנות. אבל אשמח לשלוח לו מייל או משימה עם השאלה ששאלת</p>
-  <div class="text-[10px] text-slate-400 mt-3 border-t border-dashed border-[#E2E8F0] pt-2 text-center">באדיבות נועה ❤️</div>
+<div class="border border-rose-200 shadow-sm font-sans p-5 rounded-2xl text-right my-1 relative overflow-hidden" style="background-color: #FFF5F5;" dir="rtl">
+  <div class="absolute top-0 right-0 left-0 h-1 bg-rose-500"></div>
+  <div class="flex items-center gap-2 border-b border-rose-100 pb-2.5 mb-3 select-none">
+    <span class="text-xs font-bold text-rose-700">⚠️ חוסר מידע בלוגיסטיקה</span>
+  </div>
+  <p class="text-xs text-slate-700 font-medium leading-relaxed mb-4">
+    ## אהובי ראמי לא הגיע לנקודה זו עדיין... מסכן שלי כמה הוא יכול להספיק!! רחמנות. אבל אשמח לשלוח לו מייל או משימה עם השאלה ששאלת
+  </p>
+  <div class="flex gap-2.5 flex-wrap justify-start">
+    <button onclick="
+      const nativeSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+      const inp = document.querySelector('input[placeholder=\\'הודעה חדשה...\\']');
+      if (inp && nativeSetter) {
+        nativeSetter.call(inp, 'הציגי כל ההזמנות');
+        inp.dispatchEvent(new Event('input', { bubbles: true }));
+        setTimeout(() => {
+          const btn = document.querySelector('button[title=\\'בקש מנועה לנסח\\']');
+          if (btn) btn.click();
+        }, 50);
+      }
+    " class="px-3 py-2 text-xs font-bold bg-[#008069] hover:bg-[#005e4d] text-white rounded-xl border-0 cursor-pointer shadow-xs transition-colors">
+      📋 הציגי כל ההזמנות
+    </button>
+    <button onclick="
+      const nativeSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+      const inp = document.querySelector('input[placeholder=\\'הודעה חדשה...\\']');
+      if (inp && nativeSetter) {
+        nativeSetter.call(inp, 'נהגים');
+        inp.dispatchEvent(new Event('input', { bubbles: true }));
+        setTimeout(() => {
+          const btn = document.querySelector('button[title=\\'בקש מנועה לנסח\\']');
+          if (btn) btn.click();
+        }, 50);
+      }
+    " class="px-3 py-2 text-xs font-bold bg-white text-slate-700 hover:bg-slate-50 rounded-xl border border-slate-300 cursor-pointer shadow-xs transition-colors">
+      🚚 בדקי נהגים בשטח
+    </button>
+  </div>
+  <div class="text-[10px] text-slate-400 mt-3.5 border-t border-dashed border-rose-200/55 pt-2 text-center">באדיבות נועה ❤️</div>
 </div>`.trim();
     }
 
@@ -367,14 +426,66 @@ export function useNoaBrain() {
       });
       if (response.ok) {
         const data = await response.json();
-        if (data && data.text) return data.text;
+        if (data && data.text) {
+          if (data.text.trim().startsWith('<div')) {
+            return data.text;
+          } else {
+            return `
+<div class="bg-[#F8FAFC] border border-[#E2E8F0] shadow-sm text-[#1E293B] font-sans p-5 rounded-2xl text-right my-1 relative overflow-hidden" dir="rtl">
+  <div class="absolute top-0 right-0 left-0 h-1.5 bg-[#008069]"></div>
+  <div class="flex items-center gap-2 border-b border-[#E2E8F0] pb-2.5 mb-3 select-none">
+    <span class="text-xs font-bold text-slate-800">🏗️ מענה SabanOS • סיירת נועה</span>
+  </div>
+  <p class="text-xs text-slate-705 leading-relaxed mb-4 font-medium">
+    ${data.text}
+  </p>
+  <div class="text-[10px] text-slate-400 mt-3.5 border-t border-dashed border-[#E2E8F0] pt-2 text-center">באדיבות נועה ❤️</div>
+</div>`.trim();
+          }
+        }
       }
     } catch (err) {}
 
     return `
-<div class="bg-[#F8FAFC] border border-[#E2E8F0] p-4 rounded-2xl text-right font-sans text-xs text-slate-700" dir="rtl">
-  המפקד ראמי, המערכת מחוברת ומאובטחת. אני ממתינה להוראות הלוגיסטיות הבאות שלך.<br/><br/>
-  <span class="text-blue-500 font-bold">באדיבות נועה ❤️</span>
+<div class="bg-[#F8FAFC] border border-[#E2E8F0] shadow-sm text-[#1E293B] font-sans p-5 rounded-2xl text-right my-1 relative overflow-hidden" dir="rtl">
+  <div class="absolute top-0 right-0 left-0 h-1.5 bg-[#008069]"></div>
+  <div class="flex items-center gap-2 border-b border-[#E2E8F0] pb-2.5 mb-3 select-none">
+    <span class="text-xs font-bold text-slate-800">🏗️ סיסטם SabanOS 6.0 • פעילה במצב שטח</span>
+  </div>
+  <p class="text-xs text-slate-705 leading-relaxed mb-4">
+    בוקר טוב המפקד ראמי! המערכת מחוברת ומאובטחת ב-Vercel. אני כאן לניהול הסידור והמלאי שלך ללא צורך במפתח חיצוני.
+  </p>
+  <div class="flex gap-2.5 justify-start">
+    <button onclick="
+      const nativeSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+      const inp = document.querySelector('input[placeholder=\\'הודעה חדשה...\\']');
+      if (inp && nativeSetter) {
+        nativeSetter.call(inp, 'הציגי כל ההזמנות');
+        inp.dispatchEvent(new Event('input', { bubbles: true }));
+        setTimeout(() => {
+          const btn = document.querySelector('button[title=\\'בקש מנועה לנסח\\']');
+          if (btn) btn.click();
+        }, 50);
+      }
+    " class="px-3 py-2 text-xs font-bold bg-[#008069] hover:bg-[#005e4d] text-white rounded-xl border-0 cursor-pointer shadow-xs transition-colors">
+      📋 הציגי הזמנות המפקד
+    </button>
+    <button onclick="
+      const nativeSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+      const inp = document.querySelector('input[placeholder=\\'הודעה חדשה...\\']');
+      if (inp && nativeSetter) {
+        nativeSetter.call(inp, 'נהגים');
+        inp.dispatchEvent(new Event('input', { bubbles: true }));
+        setTimeout(() => {
+          const btn = document.querySelector('button[title=\\'בקש מנועה לנסח\\']');
+          if (btn) btn.click();
+        }, 50);
+      }
+    " class="px-3 py-2 text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl border border-slate-300 cursor-pointer shadow-xs transition-colors font-medium">
+      👤 הציגי נהגים בשטח
+    </button>
+  </div>
+  <div class="text-[10px] text-slate-400 mt-3.5 border-t border-dashed border-[#E2E8F0] pt-2 text-center">באדיבות נועה ❤️</div>
 </div>`.trim();
   };
 

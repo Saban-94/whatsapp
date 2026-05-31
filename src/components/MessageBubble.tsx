@@ -15,11 +15,28 @@ const cleanNoaHtml = (text: string): string => {
   if (!text) return '';
   let cleaned = text.replace(/```(html|xml)/gi, '');
   cleaned = cleaned.replace(/```/g, '');
+  
+  // Strip any duplicate plain-text button labels or bracket wrappers appended by mistake
+  cleaned = cleaned.replace(/\[\s*הציגי הזמנות\s*\]/gi, '');
+  cleaned = cleaned.replace(/\[\s*הציגי נהגים\s*\]/gi, '');
+  cleaned = cleaned.replace(/הציגי הזמנות/g, '');
+  cleaned = cleaned.replace(/הציגי נהגים/g, '');
+  cleaned = cleaned.replace(/\[\s*בדקי הזמנות שטח\s*\]/gi, '');
+  cleaned = cleaned.replace(/\[\s*צפי בסטטוס נהגים\s*\]/gi, '');
+  cleaned = cleaned.replace(/בדקי הזמנות שטח/g, '');
+  cleaned = cleaned.replace(/צפי בסטטוס נהגים/g, '');
+  
   return cleaned.trim();
 };
 
 const parseMessageContent = (text: string): Array<{ type: 'html' | 'text'; content: string }> => {
   if (!text) return [];
+  
+  // If the message contains complete HTML elements, treat the whole block as HTML
+  const hasHtmlElement = text.includes('<div') || text.includes('<table') || text.includes('<button') || text.includes('<span');
+  if (hasHtmlElement) {
+    return [{ type: 'html', content: text }];
+  }
   
   const regex = /```(?:html|xml)?([\s\S]*?)```/gi;
   const parts: Array<{ type: 'html' | 'text'; content: string }> = [];

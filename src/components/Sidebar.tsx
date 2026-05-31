@@ -64,6 +64,29 @@ export default function Sidebar({
 }: SidebarProps) {
   const [showDropdown, setShowDropdown] = useState(false);
 
+  // Helper to highlight matching text occurrences with SabanOS Style
+  const highlightText = (text: string, search: string) => {
+    if (!search || !search.trim()) return <>{text}</>;
+    const searchTrimmed = search.trim();
+    const escapedSearch = searchTrimmed.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+    const regex = new RegExp(`(${escapedSearch})`, 'gi');
+    const parts = text.split(regex);
+    
+    return (
+      <>
+        {parts.map((part, i) => 
+          regex.test(part) ? (
+            <span key={i} className="bg-amber-100 text-amber-900 font-bold rounded-sm px-0.5">
+              {part}
+            </span>
+          ) : (
+            part
+          )
+        )}
+      </>
+    );
+  };
+
   // Check if there are unviewed status stories to highlight the Status ring green
   const hasUnviewedStatus = statuses.some(s => !s.viewed);
 
@@ -102,7 +125,7 @@ export default function Sidebar({
           {/* Top Line: Name and Date */}
           <div className="flex items-center justify-between">
             <h3 className="font-medium text-[15px] text-[#111b21] truncate w-[70%] select-none">
-              {chat.name}
+              {highlightText(chat.name, searchTerm)}
             </h3>
             <span className={`text-[11px] font-mono ${chat.unreadCount > 0 ? 'text-[#00a884] font-semibold' : 'text-[#667781]'}`}>
               {lastMessage ? lastMessage.timestamp : 'אין הודעות'}
@@ -132,7 +155,7 @@ export default function Sidebar({
                     </span>
                   )}
                   <span className="text-[#667781] truncate">
-                    {lastMessage ? lastMessage.text : 'לחץ להתחלת שיחה באנגלית או בעברית'}
+                    {lastMessage ? highlightText(lastMessage.text, searchTerm) : 'לחץ להתחלת שיחה באנגלית או בעברית'}
                   </span>
                 </>
               )}

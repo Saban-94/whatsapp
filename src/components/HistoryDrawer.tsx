@@ -33,6 +33,29 @@ export default function HistoryDrawer({ onClose, dir, onOpenNoaChat }: HistoryDr
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
+  // Helper to highlight matching text occurrences with SabanOS Style
+  const highlightText = (text: string, search: string) => {
+    if (!search || !search.trim()) return <>{text}</>;
+    const searchTrimmed = search.trim();
+    const escapedSearch = searchTrimmed.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+    const regex = new RegExp(`(${escapedSearch})`, 'gi');
+    const parts = text.split(regex);
+    
+    return (
+      <>
+        {parts.map((part, i) => 
+          regex.test(part) ? (
+            <span key={i} className="bg-amber-100 text-amber-900 font-bold rounded-sm px-0.5">
+              {part}
+            </span>
+          ) : (
+            part
+          )
+        )}
+      </>
+    );
+  };
+
   const handlePrint = () => {
     // Generate clear, printable document styled nicely for print
     const printContainer = document.createElement('div');
@@ -336,7 +359,7 @@ export default function HistoryDrawer({ onClose, dir, onOpenNoaChat }: HistoryDr
                   {/* Top line with Order ID and Date */}
                   <div className="flex items-center justify-between mb-3 text-xs">
                     <span className="font-mono font-bold bg-slate-100 text-slate-700 px-2 py-1 rounded-md text-[11px] border border-slate-200">
-                      #{order.orderNumber || '0000'}
+                      #{highlightText(order.orderNumber || '0000', searchTerm)}
                     </span>
                     <div className="flex items-center gap-1.5 text-slate-500 font-mono font-medium">
                       <Calendar className="w-3.5 h-3.5 text-emerald-500" />
@@ -347,19 +370,19 @@ export default function HistoryDrawer({ onClose, dir, onOpenNoaChat }: HistoryDr
                   {/* Customer block */}
                   <div className="font-bold text-[14px] text-slate-800 mb-2.5 flex items-center gap-1.5">
                     <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                    <span>{order.customerName}</span>
+                    <span>{highlightText(order.customerName, searchTerm)}</span>
                   </div>
 
                   {/* Dest block */}
                   <div className="text-xs text-slate-600 mb-3 space-y-1.5 font-medium">
                     <div className="flex items-start gap-1.5">
                       <MapPin className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
-                      <span className="leading-snug">{order.destination}</span>
+                      <span className="leading-snug">{highlightText(order.destination, searchTerm)}</span>
                     </div>
                     {order.warehouse && (
                       <div className="flex items-center gap-1.5 mr-0.5">
                         <Building className="w-4 h-4 text-indigo-400 shrink-0" />
-                        <span>מחסן שילוח: <b className="text-slate-700">{order.warehouse}</b></span>
+                        <span>מחסן שילוח: <b className="text-slate-700">{highlightText(order.warehouse, searchTerm)}</b></span>
                       </div>
                     )}
                   </div>
@@ -367,7 +390,7 @@ export default function HistoryDrawer({ onClose, dir, onOpenNoaChat }: HistoryDr
                   {/* Order items parsed beautifully */}
                   <div className="bg-slate-50 border border-slate-150 rounded-xl p-3 mb-3.5 text-xs text-slate-700">
                     <span className="text-[10px] font-bold text-slate-400 block mb-1 uppercase tracking-wider">פירוט המטען:</span>
-                    <p className="font-semibold leading-relaxed text-slate-800">{order.items}</p>
+                    <p className="font-semibold leading-relaxed text-slate-800">{highlightText(order.items, searchTerm)}</p>
                   </div>
 
                   {/* Driver and Call details */}
@@ -378,7 +401,7 @@ export default function HistoryDrawer({ onClose, dir, onOpenNoaChat }: HistoryDr
                       </div>
                       <div className="text-right">
                         <span className="text-[10px] text-slate-400 block">נהג מפיץ</span>
-                        <span className="font-bold text-slate-700">{getCleanDriverName(order.driverId)}</span>
+                        <span className="font-bold text-slate-700">{highlightText(getCleanDriverName(order.driverId), searchTerm)}</span>
                       </div>
                     </div>
 
@@ -386,7 +409,7 @@ export default function HistoryDrawer({ onClose, dir, onOpenNoaChat }: HistoryDr
                       {/* Status delivered badge */}
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
                         <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>סופק בהצלחה</span>
+                        <span>{highlightText('סופק בהצלחה', searchTerm)}</span>
                       </span>
 
                       {/* Sparkles "Ask Noa" action */}

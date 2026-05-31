@@ -91,6 +91,121 @@ export default function ChatWindow({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [voicePlayingId, setVoicePlayingId] = useState<string | null>(null);
 
+  // Camera variables and state
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
+  const [cameraFacing, setCameraFacing] = useState<'user' | 'environment'>('environment');
+  const [isCameraUploading, setIsCameraUploading] = useState(false);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  const startCamera = async (facing: 'user' | 'environment' = 'environment') => {
+    setCapturedPhoto(null);
+    setIsCameraOpen(true);
+    setCameraFacing(facing);
+    
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(track => track.stop());
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: facing, width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: false
+      });
+      setCameraStream(stream);
+    } catch (err: any) {
+      console.error('Error starting camera stream:', err);
+      alert('לא ניתן לגשת למצלמה. אנא ודא/י שאישרת הרשאות מצלמה בדפדפן.');
+      setIsCameraOpen(false);
+    }
+  };
+
+  const stopCamera = () => {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(track => track.stop());
+      setCameraStream(null);
+    }
+    setIsCameraOpen(false);
+    setCapturedPhoto(null);
+  };
+
+  const switchCamera = () => {
+    const nextFacing = cameraFacing === 'user' ? 'environment' : 'user';
+    startCamera(nextFacing);
+  };
+
+  const capturePhoto = () => {
+    if (!videoRef.current) return;
+    const video = videoRef.current;
+    
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+    
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+      setCapturedPhoto(dataUrl);
+      
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+        setCameraStream(null);
+      }
+    }
+  };
+
+  const sendCameraPhoto = async () => {
+    if (!capturedPhoto) return;
+    setIsCameraUploading(true);
+    try {
+      // Decode data URL to blob synchronously without using fetch()
+      const arr = capturedPhoto.split(',');
+      const mimeMatch = arr[0].match(/:(.*?);/);
+      const mime = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+      const bstr = atob(arr[1]);
+      let n = bstr.length;
+      const u8arr = new Uint8Array(n);
+      while (n--) {
+        u8arr[n] = bstr.charCodeAt(n);
+      }
+      const blob = new Blob([u8arr], { type: mime });
+      
+      const { ref, uploadBytes, getDownloadURL } = await import('firebase/storage');
+      const filename = `camera_${Date.now()}.jpg`;
+      const fileRef = ref(storage, `chats/${chat.id}/${filename}`);
+      
+      console.log('Uploading camera photo to Firebase Storage path:', fileRef.fullPath);
+      await uploadBytes(fileRef, blob);
+      
+      const downloadUrl = await getDownloadURL(fileRef);
+      console.log('Successfully uploaded camera photo:', downloadUrl);
+      
+      onSendMessage(chat.id, filename, 'image', downloadUrl);
+      stopCamera();
+    } catch (error: any) {
+      console.error('Failed to upload camera photo:', error);
+      alert(`שגיאה בהעלאת התצלום: ${error.message || 'שגיאה כללית'}`);
+    } finally {
+      setIsCameraUploading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isCameraOpen && cameraStream && videoRef.current) {
+      videoRef.current.srcObject = cameraStream;
+    }
+  }, [isCameraOpen, cameraStream]);
+
+  useEffect(() => {
+    return () => {
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [cameraStream]);
+
   // New states for Responsive layout, Media tabs and copy status
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [activeMediaTab, setActiveMediaTab] = useState<'images' | 'docs'>('images');
@@ -670,15 +785,19 @@ export default function ChatWindow({
           </button>
 
           <div className="flex items-center gap-2 text-gray-500">
-            <button onClick={() => { setShowAttachMenu(!showAttachMenu); setShowEmojiPicker(false); }} className="p-2 hover:bg-gray-100 rounded-full transition-colors relative">
+            <button onClick={() => { setShowAttachMenu(!showAttachMenu); setShowEmojiPicker(false); }} className="p-2 hover:bg-gray-100 rounded-full transition-colors relative" title="צרף קובץ">
               <Paperclip className="w-5.5 h-5.5" />
               {showAttachMenu && (
-                <div className="absolute bottom-14 right-0 flex flex-col gap-3 bg-white p-3 rounded-2xl shadow-xl border border-gray-100">
-                  <div onClick={() => handleSendMedia('image')} className="w-12 h-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center hover:scale-105 transition-transform cursor-pointer"><Image className="w-5 h-5" /></div>
-                  <div onClick={() => handleSendMedia('voice')} className="w-12 h-12 rounded-full bg-green-100 text-green-600 flex items-center justify-center hover:scale-105 transition-transform cursor-pointer"><Mic className="w-5 h-5" /></div>
-                  <div onClick={() => handleSendMedia('document')} className="w-12 h-12 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center hover:scale-105 transition-transform cursor-pointer"><File className="w-5 h-5" /></div>
+                <div className="absolute bottom-14 right-0 flex flex-col gap-3 bg-white p-3 rounded-2xl shadow-xl border border-gray-100 z-30">
+                  <div onClick={() => { startCamera('environment'); setShowAttachMenu(false); }} className="w-12 h-12 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center hover:scale-105 transition-transform cursor-pointer" title="צילום מצלמה שטח"><Camera className="w-5 h-5" /></div>
+                  <div onClick={() => handleSendMedia('image')} className="w-12 h-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center hover:scale-105 transition-transform cursor-pointer" title="גלריית תמונות"><Image className="w-5 h-5" /></div>
+                  <div onClick={() => handleSendMedia('voice')} className="w-12 h-12 rounded-full bg-green-100 text-green-600 flex items-center justify-center hover:scale-105 transition-transform cursor-pointer" title="הודעה קולית"><Mic className="w-5 h-5" /></div>
+                  <div onClick={() => handleSendMedia('document')} className="w-12 h-12 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center hover:scale-105 transition-transform cursor-pointer" title="מסמך"><File className="w-5 h-5" /></div>
                 </div>
               )}
+            </button>
+            <button onClick={() => startCamera('environment')} className="p-2 hover:bg-gray-100 text-gray-500 hover:text-amber-500 rounded-full transition-all cursor-pointer" title="צילום תמונה מהמצלמה">
+              <Camera className="w-5.5 h-5.5" />
             </button>
           </div>
 
@@ -1139,6 +1258,138 @@ export default function ChatWindow({
                 >
                   ביטול
                 </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* CAMERA OVERLAY */}
+      <AnimatePresence>
+        {isCameraOpen && (
+          <div className="fixed inset-0 z-55 flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={stopCamera}
+              className="absolute inset-0 bg-slate-950/80 backdrop-blur-md"
+            />
+
+            {/* Modal Card */}
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 30 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 30 }}
+              transition={{ type: 'spring', duration: 0.4 }}
+              className="bg-black rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden border border-zinc-800 relative z-10 text-right flex flex-col h-[520px] max-h-[85vh]"
+              dir="rtl"
+            >
+              {/* Header */}
+              <div className="px-5 py-4 border-b border-zinc-800 bg-zinc-900 flex items-center justify-between select-none">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse animate-duration-1000"></span>
+                  <h3 className="font-bold text-sm text-zinc-100 font-sans">
+                    {capturedPhoto ? 'תצוגה מקדימה - צילום שטח' : 'צילום מאובטח מרחוק - ח. סבן'}
+                  </h3>
+                </div>
+                <button 
+                  onClick={stopCamera}
+                  disabled={isCameraUploading}
+                  className="p-1.5 hover:bg-zinc-800 rounded-full text-zinc-400 border-0 bg-transparent cursor-pointer transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Viewfinder/Preview Window */}
+              <div className="flex-1 bg-black relative flex items-center justify-center overflow-hidden">
+                {!capturedPhoto ? (
+                  <>
+                    <video 
+                      ref={videoRef}
+                      autoPlay 
+                      playsInline 
+                      muted
+                      className="w-full h-full object-cover max-h-full"
+                    />
+                    {/* Retro Camera Grid overlay */}
+                    <div className="absolute inset-0 border-[20px] border-black/40 pointer-events-none flex items-center justify-center">
+                      <div className="w-full h-full border border-white/20 relative">
+                        <div className="absolute top-1/2 left-0 right-0 h-px bg-white/10" />
+                        <div className="absolute left-1/2 top-0 bottom-0 w-px bg-white/10" />
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <img 
+                    src={capturedPhoto} 
+                    alt="תצלום שטח" 
+                    className="w-full h-full object-contain"
+                  />
+                )}
+
+                {isCameraUploading && (
+                  <div className="absolute inset-0 bg-black/75 backdrop-blur-xs flex flex-col items-center justify-center gap-3 z-20 font-sans">
+                    <Loader2 className="w-8 h-8 text-[#007AFF] animate-spin" />
+                    <span className="text-sm text-zinc-200 font-medium font-sans">מעלה תצלום מאובטח ל-SabanOS Cloud...</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Controls footer */}
+              <div className="px-6 py-5 bg-zinc-900 border-t border-zinc-800 flex items-center justify-between select-none">
+                {!capturedPhoto ? (
+                  <>
+                    {/* Switch Camera */}
+                    <button
+                      onClick={switchCamera}
+                      className="p-3 text-zinc-300 hover:bg-zinc-800 rounded-full hover:text-white transition-colors border-0 bg-transparent cursor-pointer flex items-center gap-1.5 text-xs font-semibold"
+                      title="החלף מצלמה (קדמית/אחורית)"
+                    >
+                      <Camera className="w-5 h-5" />
+                      <span className="font-sans">החלף כיוון</span>
+                    </button>
+
+                    {/* Shutter Circle Button */}
+                    <button
+                      onClick={capturePhoto}
+                      className="w-16 h-16 rounded-full border-4 border-white bg-zinc-900 flex items-center justify-center hover:scale-105 transition-transform active:scale-95 cursor-pointer relative mx-auto"
+                      title="צלם תמונה"
+                    >
+                      <div className="w-12 h-12 rounded-full bg-white transition-colors" />
+                    </button>
+
+                    {/* Cancel/Exit */}
+                    <button
+                      onClick={stopCamera}
+                      className="px-4 py-2 text-xs font-semibold bg-zinc-850 hover:bg-zinc-800 text-zinc-200 rounded-xl cursor-pointer transition-all border-0 font-sans"
+                    >
+                      ביטול
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    {/* Cancel/Retake */}
+                    <button
+                      onClick={() => startCamera(cameraFacing)}
+                      disabled={isCameraUploading}
+                      className="px-5 py-2.5 text-xs font-bold text-zinc-300 hover:bg-zinc-800 rounded-xl cursor-pointer transition-colors flex items-center gap-1.5 border border-zinc-700 bg-transparent font-sans"
+                    >
+                      <span>🔄 צילום מחדש</span>
+                    </button>
+
+                    {/* Send captured photo */}
+                    <button
+                      onClick={sendCameraPhoto}
+                      disabled={isCameraUploading}
+                      className="px-6 py-2.5 text-xs font-bold bg-[#007AFF] hover:bg-blue-600 text-white rounded-xl cursor-pointer transition-colors flex items-center gap-2 shadow-lg hover:shadow-cyan-500/10 border-0 font-sans"
+                    >
+                      <span>שלח תמונה 🚀</span>
+                    </button>
+                  </>
+                )}
               </div>
             </motion.div>
           </div>

@@ -106,7 +106,12 @@ export const MessageBubble = React.memo(({
   const isOut = msg.isOutgoing;
   
   return (
-    <div className={`flex ${isOut ? 'justify-start' : 'justify-end'} mb-2`}>
+    <motion.div 
+      className={`flex ${isOut ? 'justify-start' : 'justify-end'} mb-2`}
+      initial={{ opacity: 0, y: 8, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.2, ease: "easeOut" }}
+    >
       <div className={`max-w-[70%] rounded-2xl px-3.5 py-2 pb-5.5 shadow-xs relative text-right group ${
         isOut ? 'bg-[#007AFF] text-white rounded-br-sm' : 'bg-white text-gray-900 rounded-bl-sm border border-gray-100'
       }`}>
@@ -231,7 +236,7 @@ export const MessageBubble = React.memo(({
           )}
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 });
 
